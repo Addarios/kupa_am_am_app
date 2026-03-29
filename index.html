@@ -119,6 +119,59 @@
         };
         request.onsuccess = e => { db = e.target.result; refreshChildrenData(); setCurrentDateTime(); };
 
+        function loadHistory() {
+        const selId = getSelectedChild();
+        const tx = db.transaction(["events", "children"], "readonly");
+        const eventsStore = tx.objectStore("events");
+        const childrenStore = tx.objectStore("children");
+
+        eventsStore.getAll().onsuccess = (e) => {
+            const events = e.target.result;
+            childrenStore.getAll().onsuccess = (e2) => {
+                const children = e2.target.result;
+                const today = new Date().toDateString();
+                
+                // Filtrujemy zdarzenia dla wybranego dziecka (jeśli wybrane)
+                const filtered = events.filter(ev => !selId || ev.childId === selId);
+                
+                // Obliczamy sumę ml z dzisiaj
+                const dailyTotal = filtered
+                    .filter(ev => new Date(ev.date).toDateString() === today && ev.type === 'posiłek')
+                    .reduce((s, ev) => s + (parseInt(ev.amount) || 0), 0);
+                
+                document.getElementById('summaryCards').innerHTML = `
+                    <div class="col-12">
+                        <div class="card p-2 bg-primary text-white shadow-sm">
+                            <small>Dzisiaj zjedzono:</small>
+                            <h4 class="mb-0">${dailyTotal} ml</h4>
+                        </div>
+                    </div>`;
+
+                // Wyświetlamy 15 ostatnich aktywności
+                const lastEvents = filtered.slice(-15).reverse();
+                document.getElementById('historyList').innerHTML = lastEvents.map(ev => {
+                    const cName = children.find(c => c.id === ev.childId)?.name || "Dziecko";
+                    const time = new Date(ev.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                    return `
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-2">
+                            <span><strong>${cName}</strong>: ${ev.type === 'kupa' ? '💩 Kupa' : '🍼 ' + ev.milkType}</span>
+                            <span class="badge bg-light text-dark border">${ev.amount > 0 ? ev.amount + 'ml | ' : ''}${time}</span>
+                        </li>`;
+                }).join('');
+            };
+        };
+    }
+    function deleteChild(id) {
+    if(!confirm("Czy na pewno usunąć profil dziecka i wszystkie jego dane?")) return;
+    const tx = db.transaction(["children", "events", "weight_history"], "readwrite");
+    tx.objectStore("children").delete(id);
+    // Opcjonalnie: tutaj można dodać pętlę usuwającą zdarzenia przypisane do tego dziecka
+    tx.oncomplete = () => {
+        refreshChildrenData();
+        alert("Profil usunięty");
+    };
+}
+
         function showTab(id) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active-tab'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
