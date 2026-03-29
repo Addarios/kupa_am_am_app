@@ -1,0 +1,8 @@
+body { background-color: #f8f9fa; padding-bottom: 90px; }
+.tab-content { display: none; padding: 15px; }
+.active-tab { display: block; }
+.nav-bottom { position: fixed; bottom: 0; width: 100%; background: white; display: flex; border-top: 1px solid #ddd; z-index: 1000; }
+.nav-item { padding: 12px 5px; text-align: center; cursor: pointer; flex: 1; font-size: 0.7rem; color: #666; transition: 0.2s; }
+.nav-item.active { color: #0d6efd; font-weight: bold; border-top: 3px solid #0d6efd; background: #f0f7ff; }
+.poop-btn { width: 100px; height: 100px; border-radius: 50%; font-size: 35px; background-color: #795548; border: none; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.2); margin: 20px auto; display: block; }
+.chart-container { position: relative; height: 300px; width: 100%; }
