@@ -1,64 +1,76 @@
-// Funkcja przełączania zakładek - MUSI być globalna
-function switchTab(tabId) {
-    console.log("Próba przełączenia na:", tabId);
+/**
+ * NAWIGACJA I UI
+ */
 
-    // 1. Ukryj wszystkie sekcje
+// Funkcja przełączania zakładek
+function switchTab(tabId) {
+    console.log("Przełączanie na:", tabId);
+
     const tabs = document.querySelectorAll('.tab-content');
     tabs.forEach(t => t.classList.remove('active-tab'));
 
-    // 2. Dezaktywuj przyciski menu
     const navs = document.querySelectorAll('.nav-item');
     navs.forEach(n => n.classList.remove('active'));
 
-    // 3. Pokaż wybraną sekcję
     const target = document.getElementById(tabId);
     if (target) {
         target.classList.add('active-tab');
-        const activeNav = document.getElementById('nav-' + tabId);
-        if (activeNav) activeNav.classList.add('active');
-        
-        // Wywołaj aktualizację danych
-        updateUI(tabId);
-    } else {
-        console.error("Nie znaleziono sekcji:", tabId);
-    }
-}
-function showTab(id) {
-    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active-tab'));
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.getElementById(id).classList.add('active-tab');
-    
-    // Obsługa zdarzeń przy wejściu w zakładkę
-    if(id === 'meal') {
-        setCurrentTime('mealDateTime');
-    }
-    if(id === 'report') loadHistory();
-    if(id === 'settings') renderChildrenList();
-    if(id === 'weight_tab') {
-        // Tu też możesz dodać setCurrentTime jeśli dodasz pole daty do wagi
-        loadWeightHistory();
+        // Aktualizacja UI w zależności od zakładki
+        if (tabId === 'today' || tabId === 'report') updateUI('today');
+        if (tabId === 'meal') setCurrentTime('mealDateTime');
+        if (tabId === 'poop') setCurrentTime('poopDateTime');
+        if (tabId === 'weight_tab') {
+            setCurrentTime('weightDate');
+            loadWeightHistory();
+        }
+        if (tabId === 'settings') renderChildrenList();
     }
 }
 
-// Funkcja aktualizacji widoku
+// Pomocnik daty: ustawia aktualny czas w inputach datetime-local
+function setCurrentTime(elementId) {
+    if (!elementId) return;
+    const el = document.getElementById(elementId);
+    if (!el) return;
+
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    el.value = now.toISOString().slice(0, 16);
+}
+
+// Pobieranie ID wybranego dziecka z górnego paska
+function getSelectedChildId() {
+    const select = document.getElementById('globalChildSelect');
+    if (!select || !select.value) {
+        alert("Najpierw wybierz dziecko na górze strony!");
+        return null;
+    }
+    return parseInt(select.value);
+}
+
+/**
+ * LOGIKA BAZY DANYCH I WIDOKÓW
+ */
+
+// Aktualizacja strony głównej (Raportu)
 async function updateUI(tabId) {
     if (tabId === 'today') {
         const children = await getAllEntries('children');
         const events = await getAllEntries('events');
         const todayStr = new Date().toDateString();
 
-        // 1. Podsumowanie całościowe dla każdego dziecka
+        // 1. Podsumowanie dla każdego dziecka
         let summaryHtml = '<div class="row g-2">';
         children.forEach(child => {
             const childTotal = events
                 .filter(e => e.childId === child.id && 
                              e.type === 'posiłek' && 
                              new Date(e.date).toDateString() === todayStr)
-                .reduce((sum, e) => sum + e.amount, 0);
+                .reduce((sum, e) => sum + (e.amount || 0), 0);
 
             summaryHtml += `
                 <div class="col-6">
-                    <div class="card p-2 border-0 shadow-sm bg-white">
+                    <div class="card p-2 border-0 shadow-sm bg-white text-center">
                         <small class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem;">${child.name}</small>
                         <div class="h5 mb-0 text-primary">${childTotal} ml</div>
                     </div>
@@ -67,129 +79,131 @@ async function updateUI(tabId) {
         summaryHtml += '</div>';
         document.getElementById('summaryCards').innerHTML = summaryHtml;
 
-        // 2. Lista ostatnich 10 zdarzeń (ogólna)
+        // 2. Ostatnie 10 zdarzeń
         const historyList = document.getElementById('historyList');
-        const lastEvents = events.sort((a, b) => b.date - a.date).slice(0, 10);
+        const lastEvents = events.sort((a, b) => new Date(b.date) - new Date(a.date)).reverse().slice(0, 10);
         
         historyList.innerHTML = lastEvents.map(e => {
             const child = children.find(c => c.id === e.childId);
             const time = new Date(e.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            let icon = e.type === 'kupa' ? '💩' : '🍼';
+            let detail = e.type === 'posiłek' ? `${e.amount}ml` : '';
+            
             return `
                 <li class="list-group-item d-flex justify-content-between align-items-center px-2">
-                    <span><strong>${child ? child.name : '?'}</strong>: ${e.type === 'kupa' ? '💩' : '🍼 ' + e.amount + 'ml'}</span>
+                    <span><strong>${child ? child.name : '?'}</strong>: ${icon} ${detail}</span>
                     <small class="text-muted">${time}</small>
                 </li>`;
         }).join('');
     }
 }
-function setCurrentTime(elementId) {
-    const now = new Date();
-    // Formatowanie do YYYY-MM-DDTHH:mm (wymagane przez datetime-local)
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    document.getElementById(elementId).value = now.toISOString().slice(0, 16);
-}
-// Inicjalizacja po załadowaniu strony
-// Ten blok kodu wykonuje się SAMODZIELNIE zaraz po wczytaniu strony
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log("Aplikacja startuje...");
-    try {
-        // Czekamy na połączenie z bazą (z pliku db.js)
-        await getDB(); 
-        console.log("Baza danych gotowa.");
 
-        // Ładujemy listę dzieci do selektora na górze
-        await refreshChildrenList();
-        
-        // Ustawiamy aktualną datę w formularzach
-        setCurrentTime();
-        
-        // Ładujemy historię dla domyślnego widoku
-        updateUI('today');
-    } catch (e) {
-        console.error("Błąd podczas startu aplikacji:", e);
-    }
-});
-function getSelectedChild() {
-    const select = document.getElementById('globalChildSelect');
-    if (!select || !select.value) {
-        alert("Najpierw wybierz dziecko na górze strony!");
-        return null;
-    }
-    return parseInt(select.value);
-}
-// Funkcje zapisu (uproszczone dla testu)
-// Poprawiona funkcja zapisu posiłku
-function saveMeal() {
-    // Sprawdzamy czy funkcja getSelectedChild istnieje (powinna być zdefiniowana wcześniej)
-    const childId = getSelectedChild(); 
-    if(!childId) return; // alert jest wewnątrz getSelectedChild
+/**
+ * FUNKCJE ZAPISU (ASYNC)
+ */
 
-    const milk = document.getElementById('milkType').value;
-    const ml = parseInt(document.getElementById('mlAmount').value) || 0;
-    const customDate = document.getElementById('mealDateTime').value;
+async function saveMeal() {
+    const childId = getSelectedChildId();
+    if (!childId) return;
 
-    const tx = db.transaction("events", "readwrite");
-    tx.objectStore("events").add({ 
-        childId: childId, 
-        type: 'posiłek', 
-        milkType: milk, 
-        amount: ml, 
-        date: new Date(customDate) // Zapisuje datę wybraną przez użytkownika
-    });
-
-    tx.oncomplete = () => {
-        alert("Zapisano posiłek!");
-        document.getElementById('mlAmount').value = '';
-        showTab('report'); // Wraca do raportu
+    const data = {
+        childId,
+        type: 'posiłek',
+        milkType: document.getElementById('milkType').value,
+        amount: parseInt(document.getElementById('mlAmount').value) || 0,
+        date: new Date(document.getElementById('mealDateTime').value).getTime()
     };
-    
-    tx.onerror = (e) => {
-        console.error("Błąd zapisu:", e.target.error);
-    };
+
+    await addEntry('events', data);
+    alert("Zapisano posiłek! 🍼");
+    document.getElementById('mlAmount').value = '';
+    switchTab('today');
 }
 
-// Poprawiona funkcja zapisu kupy
 async function savePoop() {
-    const childId = getChildId();
-    const dateVal = document.getElementById('poopDateTime').value;
+    const childId = getSelectedChildId();
+    if (!childId) return;
 
-    if (!childId || !dateVal) {
-        alert("Wybierz dziecko i datę!");
-        return;
-    }
-
-    await addEntry('events', { 
-        childId, 
-        type: 'kupa', 
-        date: new Date(dateVal).getTime() // Zapisujemy jako liczbę
+    await addEntry('events', {
+        childId,
+        type: 'kupa',
+        date: new Date(document.getElementById('poopDateTime').value).getTime()
     });
     alert("Zapisano 💩");
     switchTab('today');
 }
+
 async function saveWeight() {
-    const childId = getChildId();
-    const weight = parseInt(document.getElementById('newWeight').value);
+    const childId = getSelectedChildIdId(); // Poprawione na spójną nazwę
+    const weight = parseInt(document.getElementById('weightInput').value);
     const dateVal = document.getElementById('weightDate').value;
 
-    if (!childId || isNaN(weight) || !dateVal) {
-        alert("Wybierz dziecko, podaj wagę i datę!");
+    if (!childId || !weight || !dateVal) {
+        alert("Uzupełnij wszystkie pola wagi!");
         return;
     }
 
-    await addEntry('weight_history', { 
-        childId, 
-        weight, 
-        date: new Date(dateVal).getTime() 
+    await addEntry('weight_history', {
+        childId,
+        amount: weight,
+        date: new Date(dateVal).getTime()
     });
-    
-    document.getElementById('newWeight').value = "";
-    alert("Waga zapisana!");
-    updateUI('weight');
+
+    alert("Waga zapisana! ⚖️");
+    document.getElementById('weightInput').value = "";
+    loadWeightHistory();
 }
+
+/**
+ * ZARZĄDZANIE PROFILAMI
+ */
+
+async function addChild() {
+    const name = document.getElementById('childName').value;
+    const birth = document.getElementById('childBirth').value;
+    const weight = document.getElementById('childWeight').value;
+    const gender = document.getElementById('childGender').value;
+
+    if (!name || !birth) {
+        alert("Imię i data urodzenia są wymagane!");
+        return;
+    }
+
+    await addEntry('children', {
+        name,
+        birth,
+        gender,
+        weight: parseInt(weight) || 0
+    });
+
+    alert("Dziecko dodane! ✨");
+    document.getElementById('childName').value = "";
+    document.getElementById('childWeight').value = "";
+    await refreshChildrenList();
+    renderChildrenList();
+}
+
+async function renderChildrenList() {
+    const children = await getAllEntries('children');
+    const list = document.getElementById('childrenList');
+    if (!list) return;
+
+    list.innerHTML = children.map(c => `
+        <div class="col-12">
+            <div class="card p-2 shadow-sm border-0 mb-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div><strong>${c.name}</strong> <small class="text-muted">(${c.gender})</small></div>
+                    <small>Ur. ${c.birth}</small>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
 async function refreshChildrenList() {
     const children = await getAllEntries('children');
     const select = document.getElementById('globalChildSelect');
-    if(select) {
+    if (select) {
         const current = select.value;
         select.innerHTML = '<option value="">-- Wybierz dziecko --</option>' + 
             children.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
@@ -197,86 +211,30 @@ async function refreshChildrenList() {
     }
 }
 
-function addChild() {
-    console.log("1. Start funkcji addChild");
-    
-    const name = document.getElementById('childName').value;
-    const birth = document.getElementById('childBirth').value;
-    const weight = document.getElementById('childWeight').value;
-    const gender = document.getElementById('childGender').value;
-
-    if(!name || !birth) {
-        alert("Imię i data urodzenia są wymagane!");
-        return;
-    }
-
-    const childData = { 
-        name, 
-        birth, 
-        gender, 
-        weight: parseInt(weight) || 0 
-    };
-
-    console.log("2. Dane do zapisu:", childData);
-
+/**
+ * START APLIKACJI
+ */
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log("Aplikacja startuje...");
     try {
-        const tx = db.transaction("children", "readwrite");
-        const store = tx.objectStore("children");
-        
-        // Używamy .add() dla nowych rekordów
-        const request = store.add(childData);
-
-        request.onsuccess = () => {
-            console.log("3. Sukces: Dziecko zapisane w IndexedDB");
-            // Czyszczenie formularza
-            document.getElementById('childName').value = "";
-            document.getElementById('childWeight').value = "";
-            
-            // Odświeżenie widoków
-            refreshChildrenData();
-            renderChildrenList();
-            alert("Dziecko zostało dodane!");
-        };
-
-        request.onerror = (e) => {
-            console.error("Błąd zapisu w request:", e.target.error);
-            alert("Błąd bazy danych: " + e.target.error.name);
-        };
-
-        tx.oncomplete = () => {
-            console.log("4. Transakcja zakończona całkowicie.");
-        };
-
-    } catch (err) {
-        console.error("Błąd krytyczny w addChild:", err);
-        alert("Wystąpił błąd podczas komunikacji z bazą. Spróbuj 'Wymuś aktualizację' w ustawieniach.");
+        await getDB(); 
+        await refreshChildrenList();
+        switchTab('today');
+    } catch (e) {
+        console.error("Błąd startu:", e);
     }
-}
-// 1. Czyszczenie tylko plików aplikacji (HTML/JS/CSS) - BEZPIECZNE
+});
+
+/**
+ * SERWISOWE
+ */
 async function clearAppCache() {
     if ('serviceWorker' in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        for (let registration of registrations) {
-            await registration.unregister(); // Wyrejestruj SW
-        }
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (let r of regs) await r.unregister();
     }
-    
-    // Usuń wszystkie magazyny cache przeglądarki
-    const cacheNames = await caches.keys();
-    await Promise.all(
-        cacheNames.map(name => caches.delete(name))
-    );
-
-    alert("Pamięć podręczna wyczyszczona. Aplikacja przeładuje się teraz.");
-    window.location.reload(true); // Wymuś przeładowanie z serwera
-}
-
-// 2. Całkowity reset (Dane dzieci + pliki) - NIEBEZPIECZNE
-function resetFullApp() {
-    if (confirm("CZY NA PEWNO? To usunie wszystkie dane dzieci, wagę i historię posiłków bezpowrotnie!")) {
-        const req = indexedDB.deleteDatabase("BabyTrackerProDB");
-        req.onsuccess = () => {
-            clearAppCache(); // Czyści też pliki i przeładowuje
-        };
-    }
+    const names = await caches.keys();
+    await Promise.all(names.map(n => caches.delete(n)));
+    alert("Cache wyczyszczony!");
+    window.location.reload(true);
 }
