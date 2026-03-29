@@ -26,20 +26,44 @@ function switchTab(tabId) {
 
 // Funkcja aktualizacji widoku
 async function updateUI(tabId) {
-    const childId = parseInt(document.getElementById('globalChildSelect').value);
-    
     if (tabId === 'today') {
+        const children = await getAllEntries('children');
         const events = await getAllEntries('events');
-        const filtered = events.filter(e => !childId || e.childId === childId).reverse();
+        const todayStr = new Date().toDateString();
+
+        // 1. Podsumowanie całościowe dla każdego dziecka
+        let summaryHtml = '<div class="row g-2">';
+        children.forEach(child => {
+            const childTotal = events
+                .filter(e => e.childId === child.id && 
+                             e.type === 'posiłek' && 
+                             new Date(e.date).toDateString() === todayStr)
+                .reduce((sum, e) => sum + e.amount, 0);
+
+            summaryHtml += `
+                <div class="col-6">
+                    <div class="card p-2 border-0 shadow-sm bg-white">
+                        <small class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem;">${child.name}</small>
+                        <div class="h5 mb-0 text-primary">${childTotal} ml</div>
+                    </div>
+                </div>`;
+        });
+        summaryHtml += '</div>';
+        document.getElementById('summaryCards').innerHTML = summaryHtml;
+
+        // 2. Lista ostatnich 10 zdarzeń (ogólna)
+        const historyList = document.getElementById('historyList');
+        const lastEvents = events.sort((a, b) => b.date - a.date).slice(0, 10);
         
-        const list = document.getElementById('historyList');
-        if(list) {
-            list.innerHTML = filtered.slice(0, 10).map(e => `
-                <li class="list-group-item d-flex justify-content-between p-2">
-                    <span>${e.type === 'kupa' ? '💩' : '🍼'} ${e.amount ? e.amount+'ml' : ''}</span>
-                    <small class="text-muted">${new Date(e.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</small>
-                </li>`).join('');
-        }
+        historyList.innerHTML = lastEvents.map(e => {
+            const child = children.find(c => c.id === e.childId);
+            const time = new Date(e.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            return `
+                <li class="list-group-item d-flex justify-content-between align-items-center px-2">
+                    <span><strong>${child ? child.name : '?'}</strong>: ${e.type === 'kupa' ? '💩' : '🍼 ' + e.amount + 'ml'}</span>
+                    <small class="text-muted">${time}</small>
+                </li>`;
+        }).join('');
     }
 }
 
@@ -66,27 +90,68 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // Funkcje zapisu (uproszczone dla testu)
+// Poprawiona funkcja zapisu posiłku
 async function saveMeal() {
-    const childId = parseInt(document.getElementById('globalChildSelect').value);
-    if(!childId) return alert("Wybierz dziecko!");
-    const amount = parseInt(document.getElementById('mlAmount').value) || 0;
-    const date = document.getElementById('mealDateTime').value;
-    
-    await addEntry('events', { childId, type: 'posiłek', amount, milkType: document.getElementById('milkType').value, date: new Date(date) });
-    alert("Zapisano posiłek");
+    const childId = getChildId();
+    const dateVal = document.getElementById('mealDateTime').value;
+    const amount = parseInt(document.getElementById('mlAmount').value);
+
+    if (!childId || !dateVal || isNaN(amount)) {
+        alert("Wybierz dziecko, datę i podaj ilość ml!");
+        return;
+    }
+
+    const data = {
+        childId,
+        type: 'posiłek',
+        milkType: document.getElementById('milkType').value,
+        amount: amount,
+        date: new Date(dateVal).getTime() // Zapisujemy jako znacznik czasu (liczba)
+    };
+
+    await addEntry('events', data);
+    alert("Zapisano posiłek!");
     switchTab('today');
 }
 
+// Poprawiona funkcja zapisu kupy
 async function savePoop() {
-    const childId = parseInt(document.getElementById('globalChildSelect').value);
-    if(!childId) return alert("Wybierz dziecko!");
-    const date = document.getElementById('poopDateTime').value;
-    
-    await addEntry('events', { childId, type: 'kupa', date: new Date(date) });
+    const childId = getChildId();
+    const dateVal = document.getElementById('poopDateTime').value;
+
+    if (!childId || !dateVal) {
+        alert("Wybierz dziecko i datę!");
+        return;
+    }
+
+    await addEntry('events', { 
+        childId, 
+        type: 'kupa', 
+        date: new Date(dateVal).getTime() // Zapisujemy jako liczbę
+    });
     alert("Zapisano 💩");
     switchTab('today');
 }
+async function saveWeight() {
+    const childId = getChildId();
+    const weight = parseInt(document.getElementById('newWeight').value);
+    const dateVal = document.getElementById('weightDate').value;
 
+    if (!childId || isNaN(weight) || !dateVal) {
+        alert("Wybierz dziecko, podaj wagę i datę!");
+        return;
+    }
+
+    await addEntry('weight_history', { 
+        childId, 
+        weight, 
+        date: new Date(dateVal).getTime() 
+    });
+    
+    document.getElementById('newWeight').value = "";
+    alert("Waga zapisana!");
+    updateUI('weight');
+}
 async function refreshChildrenList() {
     const children = await getAllEntries('children');
     const select = document.getElementById('globalChildSelect');

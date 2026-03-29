@@ -47,13 +47,13 @@
     <div id="weight" class="tab-content">
         <h5>⚖️ Pomiary Wagi</h5>
         <div class="card p-3 mb-3 shadow-sm">
-            <div class="input-group mb-2">
-                <input type="number" id="newWeight" class="form-control" placeholder="Waga w gramach">
-                <span class="input-group-text">g</span>
-            </div>
-            <input type="date" id="weightDate" class="form-control mb-2">
-            <button id="btnSaveWeight" class="btn btn-success w-100">Dodaj pomiar</button>
-        </div>
+    <div class="input-group mb-2">
+        <input type="number" id="newWeight" class="form-control" placeholder="Waga w gramach">
+        <span class="input-group-text">g</span>
+    </div>
+    <input type="date" id="weightDate" class="form-control mb-2">
+    <button onclick="saveWeight()" class="btn btn-success w-100">Dodaj pomiar</button>
+</div>
         <ul id="weightHistoryList" class="list-group small"></ul>
     </div>
 
