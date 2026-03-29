@@ -3,154 +3,291 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0d6efd">
-    <title>Dziennik Bobasa PWA</title>
+    <title>Dziennik Bobasa Pro</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
     <style>
-        body { background-color: #f8f9fa; font-family: sans-serif; padding-bottom: 70px; }
+        body { background-color: #f8f9fa; padding-bottom: 80px; }
         .tab-content { display: none; padding: 20px; }
         .active-tab { display: block; }
-        .poop-btn { 
-            width: 150px; height: 150px; border-radius: 50%; 
-            font-size: 50px; background-color: #795548; border: none; color: white;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-        }
-        .nav-bottom {
-            position: fixed; bottom: 0; width: 100%; background: white;
-            display: flex; justify-content: space-around; border-top: 1px solid #ddd;
-        }
-        .nav-item { padding: 10px; text-align: center; cursor: pointer; flex: 1; }
-        .nav-item.active { color: #0d6efd; font-weight: bold; }
+        .nav-bottom { position: fixed; bottom: 0; width: 100%; background: white; display: flex; border-top: 1px solid #ddd; z-index: 1000; }
+        .nav-item { padding: 12px; text-align: center; cursor: pointer; flex: 1; font-size: 0.9rem; }
+        .nav-item.active { color: #0d6efd; font-weight: bold; border-top: 3px solid #0d6efd; }
+        .poop-btn { width: 120px; height: 120px; border-radius: 50%; font-size: 40px; background-color: #795548; border: none; color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .child-selector-container { background: #e9ecef; padding: 10px; border-bottom: 1px solid #ddd; }
     </style>
 </head>
 <body>
 
-    <div id="report" class="tab-content active-tab text-center">
-        <h2 class="mb-4">Podsumowanie</h2>
-        <div class="card mb-3 p-3">
-            <h5 id="dailySum">Dzisiaj: 0 ml</h5>
-        </div>
-        <ul id="historyList" class="list-group list-group-flush">
-            </ul>
+    <div class="child-selector-container">
+        <select id="globalChildSelect" class="form-select" onchange="loadHistory()">
+            <option value="">-- Wybierz dziecko --</option>
+        </select>
     </div>
 
-    <div id="meal" class="tab-content text-center">
-        <h2>Dodaj Posiłek</h2>
-        <div class="mt-4 text-start">
-            <label class="form-label">Rodzaj mleka:</label>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" name="milkType" id="m1" value="Pierś" checked>
-                <label class="form-check-label" for="m1">Karmienie piersią</label>
+    <div id="report" class="tab-content active-tab">
+        <h4 class="text-center mb-3">Podsumowanie z dzisiaj</h4>
+        <div id="summaryCards" class="row g-2 mb-3">
             </div>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" name="milkType" id="m2" value="Butelka (Matka)">
-                <label class="form-check-label" for="m2">Mleko matki (butelka)</label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" name="milkType" id="m3" value="Modyfikowane">
-                <label class="form-check-label" for="m3">Mleko modyfikowane</label>
-            </div>
-            
-            <div class="mt-3">
-                <label class="form-label">Ilość (ml):</label>
-                <input type="number" id="mlAmount" class="form-control" placeholder="Np. 120">
-            </div>
-            
-            <button onclick="saveMeal()" class="btn btn-primary w-100 mt-4 py-3">ZAPISZ POSIŁEK</button>
+        <hr>
+        <h6>Ostatnie aktywności:</h6>
+        <ul id="historyList" class="list-group list-group-flush shadow-sm"></ul>
+    </div>
+
+    <div id="meal" class="tab-content">
+        <h4 class="text-center">Dodaj Posiłek</h4>
+        <div class="card p-3 mt-3 shadow-sm">
+            <label class="form-label fw-bold">Rodzaj:</label>
+            <select id="milkType" class="form-select mb-3">
+                <option value="Pierś">Karmienie piersią</option>
+                <option value="Butelka (Matka)">Mleko matki (butelka)</option>
+                <option value="Modyfikowane">Mleko modyfikowane</option>
+            </select>
+            <label class="form-label fw-bold">Ilość (ml):</label>
+            <input type="number" id="mlAmount" class="form-control mb-4" placeholder="Np. 120">
+            <button onclick="saveMeal()" class="btn btn-primary w-100 py-3">Zapisz dla wybranego dziecka</button>
         </div>
     </div>
 
     <div id="poop" class="tab-content text-center">
-        <h2 class="mb-5">Zanotuj kupę</h2>
+        <h4 class="mb-5">Zanotuj kupę</h4>
         <button onclick="savePoop()" class="poop-btn">💩</button>
-        <p class="mt-3 text-muted">Kliknij, aby zapisać natychmiast</p>
+    </div>
+
+    <div id="settings" class="tab-content">
+        <h4 class="text-center">Zdefiniuj Dziecko</h4>
+        <div class="card p-3 shadow-sm mb-4">
+            <input type="text" id="childName" class="form-control mb-2" placeholder="Imię dziecka">
+            <div class="input-group mb-2">
+                <span class="input-group-text">Ur.</span>
+                <input type="date" id="childBirth" class="form-control">
+            </div>
+            <div class="input-group mb-2">
+                <span class="input-group-text">Waga (g)</span>
+                <input type="number" id="childWeight" class="form-control" placeholder="Np. 3500">
+            </div>
+            <select id="childGender" class="form-select mb-3">
+                <option value="Chłopiec">Chłopiec</option>
+                <option value="Dziewczynka">Dziewczynka</option>
+            </select>
+            <button onclick="addChild()" class="btn btn-success w-100">Dodaj / Aktualizuj dziecko</button>
+        </div>
+        <h6>Lista Twoich skarbów:</h6>
+        <div id="childrenList" class="row g-2"></div>
     </div>
 
     <nav class="nav-bottom">
         <div class="nav-item active" onclick="showTab('report')">📊 Raport</div>
         <div class="nav-item" onclick="showTab('meal')">🍼 Posiłek</div>
         <div class="nav-item" onclick="showTab('poop')">💩 Kupa</div>
+        <div class="nav-item" onclick="showTab('settings')">⚙️ Dzieci</div>
     </nav>
 
     <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
-            .then(() => console.log("Service Worker zarejestrowany!"));
-        }
         let db;
-        // Inicjalizacja bazy IndexedDB (Lokalna baza w przeglądarce)
-        const request = indexedDB.open("BabyTrackerDB", 1);
-        
+        const request = indexedDB.open("BabyTrackerProDB", 2);
+
         request.onupgradeneeded = e => {
             db = e.target.result;
-            db.createObjectStore("events", { keyPath: "id", autoIncrement: true });
-        };
-        
-        request.onsuccess = e => {
-            db = e.target.result;
-            loadHistory();
+            if (!db.objectStoreNames.contains("events")) {
+                db.createObjectStore("events", { keyPath: "id", autoIncrement: true });
+            }
+            if (!db.objectStoreNames.contains("children")) {
+                db.createObjectStore("children", { keyPath: "id", autoIncrement: true });
+            }
         };
 
-        // Przełączanie widoków
+        request.onsuccess = e => {
+            db = e.target.result;
+            refreshChildrenData();
+        };
+
         function showTab(id) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active-tab'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById(id).classList.add('active-tab');
             event.currentTarget.classList.add('active');
             if(id === 'report') loadHistory();
+            if(id === 'settings') renderChildrenList();
         }
 
-        // Zapisywanie danych
-        function saveData(data) {
-            const tx = db.transaction("events", "readwrite");
-            tx.objectStore("events").add({...data, date: new Date()});
+        // --- FUNKCJE DZIECI ---
+
+        function addChild() {
+            const name = document.getElementById('childName').value;
+            const birth = document.getElementById('childBirth').value;
+            const gender = document.getElementById('childGender').value;
+
+            if(!name) return alert("Podaj imię!");
+
+            const tx = db.transaction("children", "readwrite");
+            tx.objectStore("children").add({ name, birth, gender });
             tx.oncomplete = () => {
-                alert("Zapisano!");
-                showTab('report');
+                document.getElementById('childName').value = "";
+                refreshChildrenData();
+                renderChildrenList();
             };
+        }
+
+        function refreshChildrenData() {
+            const tx = db.transaction("children", "readonly");
+            const request = tx.objectStore("children").getAll();
+            request.onsuccess = () => {
+                const children = request.result;
+                const select = document.getElementById('globalChildSelect');
+                const currentVal = select.value;
+                select.innerHTML = '<option value="">-- Wybierz dziecko --</option>';
+                children.forEach(c => {
+                    select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+                });
+                select.value = currentVal;
+                loadHistory(); // Odśwież raport po zmianie listy
+            };
+        }
+
+        // Funkcja obliczająca wiek dziecka
+function calculateAge(birthDate) {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let months = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth());
+    let days = today.getDate() - birth.getDate();
+    
+    if (days < 0) {
+        months--;
+        const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+        days += lastMonth.getDate();
+    }
+    
+    if (months === 0) return `${days} dni`;
+    return `${months} m-cy, ${days} dni`;
+}
+
+    function renderChildrenList() {
+        const tx = db.transaction("children", "readonly");
+        tx.objectStore("children").getAll().onsuccess = (e) => {
+            const list = document.getElementById('childrenList');
+            const children = e.target.result;
+            list.innerHTML = children.map(c => `
+                <div class="col-12">
+                    <div class="card p-3 shadow-sm border-start border-primary border-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-0">${c.name} <small class="text-muted">(${c.gender})</small></h5>
+                                <p class="mb-0 text-primary fw-bold">Wiek: ${calculateAge(c.birth)}</p>
+                                <small class="text-muted">Ostatnia waga: ${c.weight || '---'} g</small>
+                            </div>
+                            <button class="btn btn-outline-danger btn-sm" onclick="deleteChild(${c.id})">Usuń</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        };
+    }
+
+    function addChild() {
+        const name = document.getElementById('childName').value;
+        const birth = document.getElementById('childBirth').value;
+        const weight = document.getElementById('childWeight').value;
+        const gender = document.getElementById('childGender').value;
+
+        if(!name || !birth) return alert("Imię i data urodzenia są wymagane!");
+
+        const tx = db.transaction("children", "readwrite");
+        tx.objectStore("children").put({ 
+            name, 
+            birth, 
+            gender, 
+            weight: parseInt(weight) || 0,
+            // Jeśli chcesz edytować, musiałbyś dodać ID, na razie upraszczamy do nowych wpisów
+        });
+        
+        tx.oncomplete = () => {
+            document.getElementById('childName').value = "";
+            document.getElementById('childWeight').value = "";
+            refreshChildrenData();
+            renderChildrenList();
+            alert("Profil zaktualizowany!");
+        };
+    }
+
+        // --- ZAPISYWANIE ZDARZEŃ ---
+
+        function getSelectedChild() {
+            const id = document.getElementById('globalChildSelect').value;
+            if(!id) { alert("Najpierw wybierz dziecko na górze strony!"); return null; }
+            return parseInt(id);
         }
 
         function saveMeal() {
-            const milk = document.querySelector('input[name="milkType"]:checked').value;
-            const ml = document.getElementById('mlAmount').value || 0;
-            saveData({ type: 'posiłek', milkType: milk, amount: parseInt(ml) });
-            document.getElementById('mlAmount').value = '';
+            const childId = getSelectedChild();
+            if(!childId) return;
+            const milk = document.getElementById('milkType').value;
+            const ml = parseInt(document.getElementById('mlAmount').value) || 0;
+
+            const tx = db.transaction("events", "readwrite");
+            tx.objectStore("events").add({ childId, type: 'posiłek', milkType: milk, amount: ml, date: new Date() });
+            tx.oncomplete = () => { alert("Zapisano posiłek!"); showTab('report'); };
         }
 
         function savePoop() {
-            saveData({ type: 'kupa', amount: 0 });
+            const childId = getSelectedChild();
+            if(!childId) return;
+            const tx = db.transaction("events", "readwrite");
+            tx.objectStore("events").add({ childId, type: 'kupa', amount: 0, date: new Date() });
+            tx.oncomplete = () => { alert("Zapisano kupę!"); showTab('report'); };
         }
 
-        // Ładowanie historii i sumowanie ml
+        // --- RAPORTY ---
+
         function loadHistory() {
-            const tx = db.transaction("events", "readonly");
-            const store = tx.objectStore("events");
-            const request = store.getAll();
+            const selectedChildId = parseInt(document.getElementById('globalChildSelect').value);
             
-            request.onsuccess = () => {
-                const data = request.result.reverse(); // Najnowsze na górze
-                let html = "";
-                let dailyTotal = 0;
+            const tx = db.transaction(["events", "children"], "readonly");
+            const eventsReq = tx.objectStore("events").getAll();
+            const childrenReq = tx.objectStore("children").getAll();
+
+            eventsReq.onsuccess = () => {
+                const events = eventsReq.result;
+                const children = childrenReq.result;
                 const today = new Date().toDateString();
 
-                data.forEach(item => {
-                    const itemDate = new Date(item.date);
-                    const timeStr = itemDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                // 1. Statystyki ogólne (Etykiety wszystkich dzieci)
+                let summaryHtml = "";
+                children.forEach(child => {
+                    const childTotal = events
+                        .filter(e => e.childId === child.id && new Date(e.date).toDateString() === today)
+                        .reduce((sum, e) => sum + e.amount, 0);
                     
-                    if(itemDate.toDateString() === today) {
-                        dailyTotal += (item.amount || 0);
-                    }
-
-                    html += `<li class="list-group-item d-flex justify-content-between">
-                        <span>${item.type === 'kupa' ? '💩 Kupa' : '🍼 ' + item.milkType}</span>
-                        <span class="text-muted">${item.amount > 0 ? item.amount + 'ml | ' : ''} ${timeStr}</span>
-                    </li>`;
+                    summaryHtml += `
+                        <div class="col-6">
+                            <div class="card p-2 text-center ${child.id === selectedChildId ? 'border-primary shadow' : ''}">
+                                <small class="text-muted">${child.name}</small>
+                                <div class="fw-bold">${childTotal} ml</div>
+                            </div>
+                        </div>`;
                 });
-                
-                document.getElementById('historyList').innerHTML = html;
-                document.getElementById('dailySum').innerText = `Dzisiaj zjedzono: ${dailyTotal} ml`;
+                document.getElementById('summaryCards').innerHTML = summaryHtml;
+
+                // 2. Lista historii dla wybranego dziecka
+                const filteredEvents = events
+                    .filter(e => !selectedChildId || e.childId === selectedChildId)
+                    .reverse();
+
+                document.getElementById('historyList').innerHTML = filteredEvents.map(e => {
+                    const childName = children.find(c => c.id === e.childId)?.name || "Nieznane";
+                    const time = new Date(e.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    return `<li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${childName}</strong>: ${e.type === 'kupa' ? '💩 Kupa' : '🍼 ' + e.milkType}
+                        </div>
+                        <span class="badge bg-light text-dark shadow-sm">${e.amount > 0 ? e.amount + 'ml | ' : ''} ${time}</span>
+                    </li>`;
+                }).join('');
             };
+        }
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
         }
     </script>
 </body>
