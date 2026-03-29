@@ -1,5 +1,5 @@
 let db;
-const request = indexedDB.open("BabyTrackerProDB", 5);
+const request = indexedDB.open("BabyTrackerProDB", 6);
 
 request.onupgradeneeded = (e) => {
     db = e.target.result;
@@ -15,10 +15,18 @@ const getDB = () => new Promise((resolve, reject) => {
 });
 
 async function addEntry(storeName, data) {
-    const database = await getDB();
-    const tx = database.transaction(storeName, "readwrite");
-    tx.objectStore(storeName).add(data);
-    return new Promise(resolve => tx.oncomplete = resolve);
+    const database = await getDB(); // Pobiera bazę danych
+    return new Promise((resolve, reject) => {
+        const tx = database.transaction(storeName, "readwrite");
+        const store = tx.objectStore(storeName);
+        const request = store.add(data);
+
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = (e) => {
+            console.error("Błąd zapisu do " + storeName, e.target.error);
+            reject(e.target.error);
+        };
+    });
 }
 
 async function getAllEntries(storeName) {

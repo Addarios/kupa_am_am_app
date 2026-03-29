@@ -99,36 +99,34 @@ async function refreshChildrenList() {
 }
 
 async function addChild() {
-    alert("Przycisk kliknięty!"); // Dodaj to!
-    console.log("Próba dodania dziecka...");
+    console.log("1. Start funkcji addChild");
     const nameEl = document.getElementById('childName');
     const birthEl = document.getElementById('childBirth');
 
-    if (!nameEl || !birthEl) {
-        console.error("Nie znaleziono pól formularza w HTML!");
+    if (!nameEl.value || !birthEl.value) {
+        alert("Wypełnij imię i datę!");
         return;
     }
 
-    const name = nameEl.value;
-    const birth = birthEl.value;
+    const newChild = { 
+        name: nameEl.value, 
+        birth: birthEl.value 
+    };
 
-    if (!name || !birth) {
-        alert("Proszę podać imię i datę urodzenia!");
-        return;
-    }
+    console.log("2. Dane do zapisu:", newChild);
 
     try {
-        await addEntry('children', { name, birth });
-        console.log("Dziecko dodane pomyślnie");
-        
-        // Czyścimy pola
+        // Tu najczęściej następuje blokada
+        await addEntry('children', newChild); 
+        console.log("3. Sukces! Zapisano w IndexedDB");
+
         nameEl.value = "";
         birthEl.value = "";
         
-        // Odświeżamy listy
         await refreshChildrenList();
-        alert("Dodano profil: " + name);
+        alert("Dodano dziecko!");
     } catch (err) {
-        console.error("Błąd zapisu dziecka:", err);
+        console.error("BŁĄD w kroku 3:", err);
+        alert("Błąd bazy danych: " + err);
     }
 }
