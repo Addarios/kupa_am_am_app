@@ -34,14 +34,14 @@
                 <input type="number" id="mlAmount" class="form-control" placeholder="Ilość ml">
                 <span class="input-group-text">ml</span>
             </div>
-            <button id="btnSaveMeal" class="btn btn-primary w-100">Zapisz</button>
+<button id="btnSaveMeal" onclick="saveMeal()" class="btn btn-primary w-100">Zapisz</button>
         </div>
     </div>
 
     <div id="poop" class="tab-content text-center">
         <h5>💩 Zdarzenie</h5>
         <input type="datetime-local" id="poopDateTime" class="form-control mb-4">
-        <button id="btnSavePoop" class="poop-btn">💩</button>
+        <button id="btnSavePoop" onclick="savePoop()" class="poop-btn">💩</button>
     </div>
 
     <div id="weight" class="tab-content">
@@ -80,6 +80,7 @@
         <div id="childrenList"></div>
     </div>
 
+
 <nav class="nav-bottom">
     <div class="nav-item active" id="nav-today" onclick="switchTab('today')">🏠 Dziś</div>
     <div class="nav-item" id="nav-meal" onclick="switchTab('meal')">🍼 Jemy</div>
@@ -89,9 +90,9 @@
     <div class="nav-item" id="nav-settings" onclick="switchTab('settings')">⚙️ Profil</div>
 </nav>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="db.js"></script>
-    <script src="charts.js"></script>
-    <script src="app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="db.js"></script>
+<script src="charts.js"></script> 
+<script src="app.js"></script>
 </body>
 </html>

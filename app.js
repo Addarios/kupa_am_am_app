@@ -1,163 +1,101 @@
-document.addEventListener('DOMContentLoaded', async () => {
-    await getDB();
-    initApp();
-});
-
-function initApp() {
-    refreshChildrenList();
-    setCurrentTime();
-
-    // POPRAWIONA OBSŁUGA NAWIGACJI
-    const navItems = document.querySelectorAll('.nav-item');
-    
-    navItems.forEach(item => {
-        item.onclick = (e) => {
-            // Znajduje najbliższy element z klasą nav-item (nawet jeśli klikniesz w ikonkę)
-            const clickedItem = e.target.closest('.nav-item');
-            if (!clickedItem) return;
-
-            const tabId = clickedItem.getAttribute('data-tab');
-            
-            // 1. Ukryj wszystkie zakładki
-            document.querySelectorAll('.tab-content').forEach(t => {
-                t.classList.remove('active-tab');
-            });
-
-            // 2. Usuń klasę active ze wszystkich przycisków
-            navItems.forEach(n => n.classList.remove('active'));
-
-            // 3. Pokaż wybraną zakładkę i dodaj klasę active
-            const targetTab = document.getElementById(tabId);
-            if (targetTab) {
-                targetTab.classList.add('active-tab');
-                clickedItem.classList.add('active');
-                
-                // 4. Odśwież dane dla konkretnej zakładki
-                updateUI(tabId);
-            }
-        };
-    });
-
-    // Event Listenery dla przycisków
-    document.getElementById('btnSaveMeal').onclick = saveMeal;
-    document.getElementById('btnSavePoop').onclick = savePoop;
-    document.getElementById('btnSaveWeight').onclick = saveWeight;
-    document.getElementById('btnAddChild').onclick = addChild;
-    document.getElementById('globalChildSelect').onchange = () => updateUI('today');
-}
+// Funkcja przełączania zakładek - MUSI być globalna
 function switchTab(tabId) {
-    console.log("Przełączam na:", tabId); // To sprawdzisz w konsoli F12
+    console.log("Próba przełączenia na:", tabId);
 
     // 1. Ukryj wszystkie sekcje
-    const tabs = document.getElementsByClassName('tab-content');
-    for (let tab of tabs) {
-        tab.classList.remove('active-tab');
-    }
+    const tabs = document.querySelectorAll('.tab-content');
+    tabs.forEach(t => t.classList.remove('active-tab'));
 
-    // 2. Dezaktywuj wszystkie przyciski menu
-    const navs = document.getElementsByClassName('nav-item');
-    for (let nav of navs) {
-        nav.classList.remove('active');
-    }
+    // 2. Dezaktywuj przyciski menu
+    const navs = document.querySelectorAll('.nav-item');
+    navs.forEach(n => n.classList.remove('active'));
 
     // 3. Pokaż wybraną sekcję
     const target = document.getElementById(tabId);
     if (target) {
         target.classList.add('active-tab');
+        const activeNav = document.getElementById('nav-' + tabId);
+        if (activeNav) activeNav.classList.add('active');
+        
+        // Wywołaj aktualizację danych
+        updateUI(tabId);
     } else {
-        console.error("Nie znaleziono sekcji o ID:", tabId);
+        console.error("Nie znaleziono sekcji:", tabId);
     }
+}
 
-    // 4. Podświetl wybrany przycisk (używając ID, które dodaliśmy w HTML)
-    const activeNav = document.getElementById('nav-' + tabId);
-    if (activeNav) {
-        activeNav.classList.add('active');
+// Funkcja aktualizacji widoku
+async function updateUI(tabId) {
+    const childId = parseInt(document.getElementById('globalChildSelect').value);
+    
+    if (tabId === 'today') {
+        const events = await getAllEntries('events');
+        const filtered = events.filter(e => !childId || e.childId === childId).reverse();
+        
+        const list = document.getElementById('historyList');
+        if(list) {
+            list.innerHTML = filtered.slice(0, 10).map(e => `
+                <li class="list-group-item d-flex justify-content-between p-2">
+                    <span>${e.type === 'kupa' ? '💩' : '🍼'} ${e.amount ? e.amount+'ml' : ''}</span>
+                    <small class="text-muted">${new Date(e.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</small>
+                </li>`).join('');
+        }
     }
-
-    // 5. Odśwież dane
-    updateUI(tabId);
-    if(tabId === 'meal' || tabId === 'poop') setCurrentTime();
 }
 
-function getChildId() {
-    return parseInt(document.getElementById('globalChildSelect').value) || null;
-}
+// Inicjalizacja po załadowaniu strony
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log("Aplikacja zainicjowana");
+    try {
+        await getDB();
+        refreshChildrenList();
+        // Ustawienie domyślnego czasu w polach
+        const now = new Date().toISOString().slice(0, 16);
+        if(document.getElementById('mealDateTime')) document.getElementById('mealDateTime').value = now;
+        if(document.getElementById('poopDateTime')) document.getElementById('poopDateTime').value = now;
+    } catch (e) {
+        console.error("Błąd inicjalizacji:", e);
+    }
+});
 
-function setCurrentTime() {
-    const now = new Date().toISOString().slice(0, 16);
-    if(document.getElementById('mealDateTime')) document.getElementById('mealDateTime').value = now;
-    if(document.getElementById('poopDateTime')) document.getElementById('poopDateTime').value = now;
-}
-
+// Funkcje zapisu (uproszczone dla testu)
 async function saveMeal() {
-    const childId = getChildId();
+    const childId = parseInt(document.getElementById('globalChildSelect').value);
     if(!childId) return alert("Wybierz dziecko!");
-    const data = {
-        childId,
-        type: 'posiłek',
-        milkType: document.getElementById('milkType').value,
-        amount: parseInt(document.getElementById('mlAmount').value) || 0,
-        date: new Date(document.getElementById('mealDateTime').value)
-    };
-    await addEntry('events', data);
-    alert("Smacznego!");
-    updateUI('today');
+    const amount = parseInt(document.getElementById('mlAmount').value) || 0;
+    const date = document.getElementById('mealDateTime').value;
+    
+    await addEntry('events', { childId, type: 'posiłek', amount, milkType: document.getElementById('milkType').value, date: new Date(date) });
+    alert("Zapisano posiłek");
+    switchTab('today');
 }
 
 async function savePoop() {
-    const childId = getChildId();
+    const childId = parseInt(document.getElementById('globalChildSelect').value);
     if(!childId) return alert("Wybierz dziecko!");
-    await addEntry('events', { childId, type: 'kupa', date: new Date(document.getElementById('poopDateTime').value) });
+    const date = document.getElementById('poopDateTime').value;
+    
+    await addEntry('events', { childId, type: 'kupa', date: new Date(date) });
     alert("Zapisano 💩");
-}
-
-async function saveWeight() {
-    const childId = getChildId();
-    const weight = parseInt(document.getElementById('newWeight').value);
-    if(!childId || !weight) return alert("Wybierz dziecko i podaj wagę!");
-    await addEntry('weight_history', { childId, weight, date: new Date(document.getElementById('weightDate').value) });
-    updateUI('weight');
-}
-
-async function addChild() {
-    const name = document.getElementById('childName').value;
-    const birth = document.getElementById('childBirth').value;
-    if(!name) return;
-    await addEntry('children', { name, birth });
-    refreshChildrenList();
+    switchTab('today');
 }
 
 async function refreshChildrenList() {
     const children = await getAllEntries('children');
     const select = document.getElementById('globalChildSelect');
-    const list = document.getElementById('childrenList');
-    
-    select.innerHTML = '<option value="">-- Wybierz dziecko --</option>' + 
-        children.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-    
-    if(list) {
-        list.innerHTML = children.map(c => `<div class="card p-2 mb-2 border-start border-primary border-4 shadow-sm small">${c.name} (ur. ${c.birth})</div>`).join('');
+    if(select) {
+        const current = select.value;
+        select.innerHTML = '<option value="">-- Wybierz dziecko --</option>' + 
+            children.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        select.value = current;
     }
 }
 
-async function updateUI(tabId) {
-    const childId = getChildId();
-    if(tabId === 'today') {
-        const events = await getAllEntries('events');
-        const filtered = events.filter(e => e.childId === childId).reverse();
-        const todayStr = new Date().toDateString();
-        const totalMl = filtered.filter(e => new Date(e.date).toDateString() === todayStr && e.type === 'posiłek').reduce((s, e) => s + e.amount, 0);
-        
-        document.getElementById('summaryCards').innerHTML = `<div class="col-12"><div class="card p-2 bg-primary text-white">Dzisiaj: ${totalMl} ml</div></div>`;
-        document.getElementById('historyList').innerHTML = filtered.slice(0, 10).map(e => `
-            <li class="list-group-item d-flex justify-content-between">
-                <span>${e.type === 'kupa' ? '💩' : '🍼'} ${e.amount ? e.amount+'ml' : ''}</span>
-                <small>${new Date(e.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</small>
-            </li>`).join('');
-    }
-    if(tabId === 'weight') {
-        const history = await getAllEntries('weight_history');
-        const filtered = history.filter(h => h.childId === childId).reverse();
-        document.getElementById('weightHistoryList').innerHTML = filtered.map(h => `<li class="list-group-item d-flex justify-content-between p-1"><span>${new Date(h.date).toLocaleDateString()}</span><strong>${h.weight}g</strong></li>`).join('');
-    }
+async function addChild() {
+    const name = document.getElementById('childName').value;
+    const birth = document.getElementById('childBirth').value;
+    if(!name) return alert("Podaj imię!");
+    await addEntry('children', { name, birth });
+    document.getElementById('childName').value = "";
+    refreshChildrenList();
 }
