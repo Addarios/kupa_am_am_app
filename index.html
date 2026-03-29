@@ -55,26 +55,26 @@
     </div>
 
     <div id="settings" class="tab-content">
-        <h4 class="text-center">Zdefiniuj Dziecko</h4>
-        <div class="card p-3 shadow-sm mb-4">
-            <input type="text" id="childName" class="form-control mb-2" placeholder="Imię dziecka">
-            <div class="input-group mb-2">
-                <span class="input-group-text">Ur.</span>
-                <input type="date" id="childBirth" class="form-control">
-            </div>
-            <div class="input-group mb-2">
-                <span class="input-group-text">Waga (g)</span>
-                <input type="number" id="childWeight" class="form-control" placeholder="Np. 3500">
-            </div>
-            <select id="childGender" class="form-select mb-3">
-                <option value="Chłopiec">Chłopiec</option>
-                <option value="Dziewczynka">Dziewczynka</option>
-            </select>
-            <button onclick="addChild()" class="btn btn-success w-100">Dodaj / Aktualizuj dziecko</button>
+    <h4 class="text-center">Zdefiniuj Dziecko</h4>
+    <div class="card p-3 shadow-sm mb-4">
+        <input type="text" id="childName" class="form-control mb-2" placeholder="Imię dziecka">
+        <div class="input-group mb-2">
+            <span class="input-group-text">Ur.</span>
+            <input type="date" id="childBirth" class="form-control">
         </div>
-        <h6>Lista Twoich skarbów:</h6>
-        <div id="childrenList" class="row g-2"></div>
+        <div class="input-group mb-2">
+            <span class="input-group-text">Waga (g)</span>
+            <input type="number" id="childWeight" class="form-control" placeholder="Np. 3500">
+        </div>
+        <select id="childGender" class="form-select mb-3">
+            <option value="Chłopiec">Chłopiec</option>
+            <option value="Dziewczynka">Dziewczynka</option>
+        </select>
+        <button onclick="addChild()" class="btn btn-success w-100">Dodaj / Aktualizuj dziecko</button>
     </div>
+    <h6>Lista Twoich skarbów:</h6>
+    <div id="childrenList" class="row g-2"></div>
+</div>
 
     <nav class="nav-bottom">
         <div class="nav-item active" onclick="showTab('report')">📊 Raport</div>
@@ -85,7 +85,7 @@
 
     <script>
         let db;
-        const request = indexedDB.open("BabyTrackerProDB", 2);
+        const request = indexedDB.open("BabyTrackerProDB", 3);
 
         request.onupgradeneeded = e => {
             db = e.target.result;
@@ -146,21 +146,22 @@
         }
 
         // Funkcja obliczająca wiek dziecka
-function calculateAge(birthDate) {
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let months = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth());
-    let days = today.getDate() - birth.getDate();
-    
-    if (days < 0) {
-        months--;
-        const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
-        days += lastMonth.getDate();
+// Funkcja obliczająca wiek dziecka
+    function calculateAge(birthDate) {
+        const today = new Date();
+        const birth = new Date(birthDate);
+        let months = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth());
+        let days = today.getDate() - birth.getDate();
+        
+        if (days < 0) {
+            months--;
+            const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+            days += lastMonth.getDate();
+        }
+        
+        if (months === 0) return `${days} dni`;
+        return `${months} m-cy, ${days} dni`;
     }
-    
-    if (months === 0) return `${days} dni`;
-    return `${months} m-cy, ${days} dni`;
-}
 
     function renderChildrenList() {
         const tx = db.transaction("children", "readonly");
@@ -209,6 +210,15 @@ function calculateAge(birthDate) {
             alert("Profil zaktualizowany!");
         };
     }
+        
+        tx.oncomplete = () => {
+            document.getElementById('childName').value = "";
+            document.getElementById('childWeight').value = "";
+            refreshChildrenData();
+            renderChildrenList();
+            alert("Profil zaktualizowany!");
+        };
+    
 
         // --- ZAPISYWANIE ZDARZEŃ ---
 
