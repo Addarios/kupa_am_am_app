@@ -8,89 +8,101 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="manifest" href="manifest.json">
     <style>
-        body { background-color: #f8f9fa; padding-bottom: 80px; }
-        .tab-content { display: none; padding: 20px; }
+        body { background-color: #f8f9fa; padding-bottom: 85px; }
+        .tab-content { display: none; padding: 15px; }
         .active-tab { display: block; }
         .nav-bottom { position: fixed; bottom: 0; width: 100%; background: white; display: flex; border-top: 1px solid #ddd; z-index: 1000; }
-        .nav-item { padding: 12px; text-align: center; cursor: pointer; flex: 1; font-size: 0.8rem; }
+        .nav-item { padding: 10px 5px; text-align: center; cursor: pointer; flex: 1; font-size: 0.75rem; color: #666; }
         .nav-item.active { color: #0d6efd; font-weight: bold; border-top: 3px solid #0d6efd; }
-        .poop-btn { width: 100px; height: 100px; border-radius: 50%; font-size: 35px; background-color: #795548; border: none; color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .poop-btn { width: 90px; height: 90px; border-radius: 50%; font-size: 30px; background-color: #795548; border: none; color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .chart-container { position: relative; height: 300px; width: 100%; }
     </style>
 </head>
 <body>
 
-    <div class="bg-light p-2 border-bottom sticky-top">
-        <select id="globalChildSelect" class="form-select" onchange="loadHistory()">
+    <div class="bg-primary text-white p-2 sticky-top shadow-sm">
+        <select id="globalChildSelect" class="form-select form-select-sm" onchange="refreshAllViews()">
             <option value="">-- Wybierz dziecko --</option>
         </select>
     </div>
 
-    <div id="report" class="tab-content active-tab">
-        <div id="summaryCards" class="row g-2 mb-3"></div>
-        <h6>Ostatnie aktywności:</h6>
-        <ul id="historyList" class="list-group list-group-flush shadow-sm small"></ul>
+    <div id="today" class="tab-content active-tab">
+        <div id="summaryCards" class="row g-2 mb-3 text-center"></div>
+        <h6 class="border-bottom pb-2">Ostatnie zdarzenia:</h6>
+        <ul id="historyList" class="list-group list-group-flush small"></ul>
     </div>
 
     <div id="meal" class="tab-content">
-        <h4>Dodaj Posiłek</h4>
-        <div class="card p-3 mt-2 shadow-sm">
-            <label class="small fw-bold">Kiedy?</label>
+        <h5>🍼 Nowy Posiłek</h5>
+        <div class="card p-3 shadow-sm">
             <input type="datetime-local" id="mealDateTime" class="form-control mb-3">
-            
-            <label class="small fw-bold">Rodzaj:</label>
             <select id="milkType" class="form-select mb-3">
                 <option value="Pierś">Karmienie piersią</option>
                 <option value="Butelka (Matka)">Mleko matki (butelka)</option>
                 <option value="Modyfikowane">Mleko modyfikowane</option>
             </select>
-            
-            <label class="small fw-bold">Ilość (ml):</label>
-            <input type="number" id="mlAmount" class="form-control mb-4" placeholder="Np. 120">
-            
-            <button onclick="saveMeal()" class="btn btn-primary w-100 py-3">Zapisz Posiłek</button>
+            <div class="input-group mb-3">
+                <input type="number" id="mlAmount" class="form-control" placeholder="Ilość ml">
+                <span class="input-group-text">ml</span>
+            </div>
+            <button onclick="saveMeal()" class="btn btn-primary w-100">Zapisz</button>
         </div>
     </div>
 
     <div id="poop" class="tab-content text-center">
-        <h4 class="mb-5">Zanotuj kupę</h4>
-        <input type="datetime-local" id="poopDateTime" class="form-control mb-4 mx-auto" style="max-width: 300px;">
+        <h5>💩 Zdarzenie</h5>
+        <input type="datetime-local" id="poopDateTime" class="form-control mb-4">
         <button onclick="savePoop()" class="poop-btn">💩</button>
     </div>
 
-    <div id="analytics" class="tab-content">
-        <h4 class="text-center">Wykresy</h4>
-        <div class="btn-group w-100 mb-3">
-            <button class="btn btn-sm btn-outline-primary" onclick="renderFeedingChart()">🍼 Karmienie</button>
-            <button class="btn btn-sm btn-outline-success" onclick="renderWeightChart()">⚖️ Waga</button>
+    <div id="weight" class="tab-content">
+        <h5>⚖️ Pomiary Wagi</h5>
+        <div class="card p-3 mb-3 shadow-sm">
+            <div class="input-group mb-2">
+                <input type="number" id="newWeight" class="form-control" placeholder="Waga w gramach (np. 4250)">
+                <span class="input-group-text">g</span>
+            </div>
+            <input type="date" id="weightDate" class="form-control mb-2">
+            <button onclick="saveNewWeight()" class="btn btn-success w-100">Dodaj pomiar</button>
         </div>
-        <div class="card p-1 shadow-sm"><canvas id="myChart"></canvas></div>
+        <h6>Historia wagi:</h6>
+        <ul id="weightHistoryList" class="list-group small"></ul>
+    </div>
+
+    <div id="analytics" class="tab-content">
+        <h5>📈 Wykresy</h5>
+        <div class="mb-3">
+            <label class="small fw-bold">Skala czasu:</label>
+            <div class="btn-group btn-group-sm w-100" role="group">
+                <input type="radio" class="btn-check" name="timeScale" id="scaleHour" checked>
+                <label class="btn btn-outline-secondary" for="scaleHour" onclick="renderFeedingChart('hour')">Dzisiaj (Godziny)</label>
+                <input type="radio" class="btn-check" name="timeScale" id="scaleDay">
+                <label class="btn btn-outline-secondary" for="scaleDay" onclick="renderFeedingChart('day')">Ostatnie dni</label>
+            </div>
+        </div>
+        <div class="btn-group w-100 mb-3">
+            <button class="btn btn-sm btn-primary" onclick="renderFeedingChart()">🍼 Posiłki</button>
+            <button class="btn btn-sm btn-success" onclick="renderWeightChart()">⚖️ Waga</button>
+        </div>
+        <div class="chart-container"><canvas id="myChart"></canvas></div>
     </div>
 
     <div id="settings" class="tab-content">
-        <h4>Profil i Waga</h4>
-        <div class="card p-3 shadow-sm mb-4">
+        <h5>⚙️ Zarządzaj Dziećmi</h5>
+        <div class="card p-3 mb-3 shadow-sm">
             <input type="text" id="childName" class="form-control mb-2" placeholder="Imię">
             <input type="date" id="childBirth" class="form-control mb-2">
-            <select id="childGender" class="form-select mb-3">
-                <option value="Chłopiec">Chłopiec</option>
-                <option value="Dziewczynka">Dziewczynka</option>
-            </select>
-            <button onclick="addChild()" class="btn btn-success w-100 mb-2">Dodaj dziecko</button>
-            <hr>
-            <h6>Zapisz wagę (g):</h6>
-            <div class="input-group">
-                <input type="number" id="newWeight" class="form-control" placeholder="Np. 4100">
-                <button class="btn btn-primary" onclick="saveNewWeight()">Zapisz wagę</button>
-            </div>
+            <button onclick="addChild()" class="btn btn-dark w-100">Dodaj profil</button>
         </div>
-        <div id="childrenList" class="row g-2"></div>
+        <div id="childrenList"></div>
     </div>
 
     <nav class="nav-bottom">
-        <div class="nav-item active" onclick="showTab('report')">📊 Dziś</div>
-        <div class="nav-item" onclick="showTab('meal')">🍼 Posiłek</div>
+        <div class="nav-item active" onclick="showTab('today')">🏠 Dziś</div>
+        <div class="nav-item" onclick="showTab('meal')">🍼 Jemy</div>
         <div class="nav-item" onclick="showTab('poop')">💩 Kupa</div>
-        <div class="nav-item" onclick="showTab('analytics')">📈 Wykresy</div>
+        <div class="nav-item" onclick="showTab('weight')">⚖️ Waga</div>
+        <div class="nav-item" onclick="showTab('analytics')">📈 Raport</div>
         <div class="nav-item" onclick="showTab('settings')">⚙️ Profil</div>
     </nav>
 
@@ -98,83 +110,109 @@
         let db;
         let currentChart = null;
 
-        const request = indexedDB.open("BabyTrackerProDB", 4);
-
+        const request = indexedDB.open("BabyTrackerProDB", 5);
         request.onupgradeneeded = e => {
             db = e.target.result;
             if (!db.objectStoreNames.contains("events")) db.createObjectStore("events", { keyPath: "id", autoIncrement: true });
             if (!db.objectStoreNames.contains("children")) db.createObjectStore("children", { keyPath: "id", autoIncrement: true });
             if (!db.objectStoreNames.contains("weight_history")) db.createObjectStore("weight_history", { keyPath: "id", autoIncrement: true });
         };
-
-        request.onsuccess = e => {
-            db = e.target.result;
-            setCurrentDateTime();
-            refreshChildrenData();
-        };
-
-        function setCurrentDateTime() {
-            const now = new Date().toISOString().slice(0, 16);
-            document.getElementById('mealDateTime').value = now;
-            document.getElementById('poopDateTime').value = now;
-        }
+        request.onsuccess = e => { db = e.target.result; refreshChildrenData(); setCurrentDateTime(); };
 
         function showTab(id) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active-tab'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById(id).classList.add('active-tab');
             event.currentTarget.classList.add('active');
-            if(id === 'report') loadHistory();
-            if(id === 'settings') renderChildrenList();
+            refreshAllViews();
+        }
+
+        function refreshAllViews() {
+            loadHistory();
+            renderChildrenList();
+            renderWeightHistory();
             setCurrentDateTime();
         }
 
-        function saveMeal() {
-            const childId = getSelectedChild();
-            const date = document.getElementById('mealDateTime').value;
-            if(!childId || !date) return alert("Wybierz dziecko i datę!");
-            const milk = document.getElementById('milkType').value;
-            const ml = parseInt(document.getElementById('mlAmount').value) || 0;
-
-            const tx = db.transaction("events", "readwrite");
-            tx.objectStore("events").add({ childId, type: 'posiłek', milkType: milk, amount: ml, date: new Date(date) });
-            tx.oncomplete = () => { alert("Zapisano!"); showTab('report'); };
+        function setCurrentDateTime() {
+            const now = new Date().toISOString().slice(0, 16);
+            document.getElementById('mealDateTime').value = now;
+            document.getElementById('poopDateTime').value = now;
+            document.getElementById('weightDate').value = now.slice(0,10);
         }
 
-        function savePoop() {
-            const childId = getSelectedChild();
-            const date = document.getElementById('poopDateTime').value;
-            if(!childId) return alert("Wybierz dziecko!");
-            const tx = db.transaction("events", "readwrite");
-            tx.objectStore("events").add({ childId, type: 'kupa', amount: 0, date: new Date(date) });
-            tx.oncomplete = () => { alert("Zapisano!"); showTab('report'); };
+        function getSelectedChild() {
+            const id = document.getElementById('globalChildSelect').value;
+            return id ? parseInt(id) : null;
         }
 
+        // --- OBSŁUGA WAGI ---
         function saveNewWeight() {
             const childId = getSelectedChild();
             const weight = parseInt(document.getElementById('newWeight').value);
-            if(!childId || !weight) return alert("Wybierz dziecko i podaj wagę!");
+            const date = document.getElementById('weightDate').value;
+            if(!childId || !weight || !date) return alert("Wybierz dziecko i podaj dane!");
 
             const tx = db.transaction("weight_history", "readwrite");
-            tx.objectStore("weight_history").add({ childId, weight, date: new Date() });
+            tx.objectStore("weight_history").add({ childId, weight, date: new Date(date) });
             tx.oncomplete = () => {
                 alert("Waga zapisana!");
                 document.getElementById('newWeight').value = "";
-                renderChildrenList();
+                renderWeightHistory();
             };
         }
 
-        function renderFeedingChart() {
+        function renderWeightHistory() {
             const childId = getSelectedChild();
-            if (!childId) return;
+            if(!childId) return;
+            db.transaction("weight_history").objectStore("weight_history").getAll().onsuccess = (e) => {
+                const list = document.getElementById('weightHistoryList');
+                const history = e.target.result.filter(w => w.childId === childId).reverse();
+                list.innerHTML = history.map(w => `
+                    <li class="list-group-item d-flex justify-content-between p-1">
+                        <span>${new Date(w.date).toLocaleDateString()}</span>
+                        <strong>${w.weight} g</strong>
+                    </li>
+                `).join('');
+            };
+        }
+
+        // --- WYKRESY Z WYBOREM SKALI ---
+        function renderFeedingChart(scale = 'hour') {
+            const childId = getSelectedChild();
+            if (!childId) return alert("Wybierz dziecko!");
+            
             db.transaction("events").objectStore("events").getAll().onsuccess = (e) => {
-                const data = e.target.result.filter(ev => ev.childId === childId && ev.type === 'posiłek');
-                const groups = {};
-                data.forEach(ev => {
-                    const day = new Date(ev.date).toLocaleDateString();
-                    groups[day] = (groups[day] || 0) + ev.amount;
-                });
-                drawChart('Karmienie (ml)', Object.keys(groups), Object.values(groups), '#0d6efd');
+                const events = e.target.result.filter(ev => ev.childId === childId && ev.type === 'posiłek');
+                let labels = [];
+                let values = [];
+
+                if(scale === 'hour') {
+                    // Grupowanie po godzinach (tylko dzisiaj)
+                    const today = new Date().toDateString();
+                    const hours = Array.from({length: 24}, (_, i) => i + ":00");
+                    const hourlyData = new Array(24).fill(0);
+                    
+                    events.forEach(ev => {
+                        const d = new Date(ev.date);
+                        if(d.toDateString() === today) {
+                            hourlyData[d.getHours()] += ev.amount;
+                        }
+                    });
+                    labels = hours;
+                    values = hourlyData;
+                } else {
+                    // Grupowanie po dniach (ostatnie 7 dni)
+                    const dayMap = {};
+                    events.forEach(ev => {
+                        const day = new Date(ev.date).toLocaleDateString();
+                        dayMap[day] = (dayMap[day] || 0) + ev.amount;
+                    });
+                    labels = Object.keys(dayMap).slice(-7);
+                    values = Object.values(dayMap).slice(-7);
+                }
+
+                drawChart('Karmienie (ml)', labels, values, '#0d6efd', scale === 'hour' ? 'bar' : 'line');
             };
         }
 
@@ -182,78 +220,62 @@
             const childId = getSelectedChild();
             if (!childId) return;
             db.transaction("weight_history").objectStore("weight_history").getAll().onsuccess = (e) => {
-                const data = e.target.result.filter(w => w.childId === childId);
-                data.sort((a,b) => new Date(a.date) - new Date(b.date));
-                const labels = data.map(w => new Date(w.date).toLocaleDateString());
-                const values = data.map(w => w.weight);
-                drawChart('Masa ciała (g)', labels, values, '#198754');
+                const data = e.target.result.filter(w => w.childId === childId).sort((a,b) => new Date(a.date) - new Date(b.date));
+                drawChart('Waga (g)', data.map(w => new Date(w.date).toLocaleDateString()), data.map(w => w.weight), '#198754', 'line');
             };
         }
 
-        function drawChart(label, labels, data, color) {
+        function drawChart(label, labels, data, color, type) {
             const ctx = document.getElementById('myChart').getContext('2d');
             if (currentChart) currentChart.destroy();
             currentChart = new Chart(ctx, {
-                type: 'line',
-                data: { labels: labels, datasets: [{ label: label, data: data, borderColor: color, tension: 0.3, fill: true, backgroundColor: color+'22' }] }
+                type: type,
+                data: { labels: labels, datasets: [{ label: label, data: data, backgroundColor: color+'88', borderColor: color, fill: true, tension: 0.3 }] },
+                options: { maintainAspectRatio: false }
             });
         }
 
-        // --- RESZTA LOGIKI (refreshChildrenData, getSelectedChild, loadHistory itp.) ---
-        // (Pozostaje taka sama jak w poprzednim kroku)
-        
-        function getSelectedChild() {
-            const id = document.getElementById('globalChildSelect').value;
-            return id ? parseInt(id) : null;
-        }
-
+        // --- FUNKCJE POMOCNICZE ---
         function refreshChildrenData() {
             db.transaction("children").objectStore("children").getAll().onsuccess = (e) => {
                 const select = document.getElementById('globalChildSelect');
-                const current = select.value;
-                select.innerHTML = '<option value="">-- Wybierz dziecko --</option>';
-                e.target.result.forEach(c => select.innerHTML += `<option value="${c.id}">${c.name}</option>`);
-                select.value = current;
-                loadHistory();
+                select.innerHTML = '<option value="">-- Wybierz dziecko --</option>' + 
+                    e.target.result.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                refreshAllViews();
             };
         }
 
         function addChild() {
             const name = document.getElementById('childName').value;
             const birth = document.getElementById('childBirth').value;
-            const gender = document.getElementById('childGender').value;
-            if(!name || !birth) return alert("Uzupełnij dane!");
+            if(!name) return;
             const tx = db.transaction("children", "readwrite");
-            tx.objectStore("children").add({ name, birth, gender });
-            tx.oncomplete = () => { refreshChildrenData(); renderChildrenList(); };
+            tx.objectStore("children").add({ name, birth });
+            tx.oncomplete = () => { document.getElementById('childName').value = ""; refreshChildrenData(); };
         }
 
         function renderChildrenList() {
-            db.transaction(["children", "weight_history"]).objectStore("children").getAll().onsuccess = (e) => {
-                const list = document.getElementById('childrenList');
-                list.innerHTML = e.target.result.map(c => `
-                    <div class="col-12 card p-2 mb-2 shadow-sm">
-                        <div class="fw-bold">${c.name}</div>
-                        <div class="small text-muted">Ur. ${c.birth} | ${c.gender}</div>
-                    </div>
-                `).join('');
+            db.transaction("children").objectStore("children").getAll().onsuccess = (e) => {
+                document.getElementById('childrenList').innerHTML = e.target.result.map(c => `
+                    <div class="card p-2 mb-2 border-start border-primary border-4 shadow-sm small">
+                        <strong>${c.name}</strong> ur. ${c.birth}
+                    </div>`).join('');
             };
         }
 
         function loadHistory() {
             const selId = getSelectedChild();
-            const tx = db.transaction(["events", "children"], "readonly");
-            tx.objectStore("events").getAll().onsuccess = (e) => {
-                const events = e.target.result;
+            db.transaction("events").objectStore("events").getAll().onsuccess = (e) => {
                 const today = new Date().toDateString();
-                const filtered = events.filter(ev => !selId || ev.childId === selId).reverse();
+                const filtered = e.target.result.filter(ev => !selId || ev.childId === selId);
+                const dailyTotal = filtered.filter(ev => new Date(ev.date).toDateString() === today).reduce((s, ev) => s + (ev.amount||0), 0);
                 
-                document.getElementById('historyList').innerHTML = filtered.map(ev => `
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span>${ev.type === 'kupa' ? '💩' : '🍼'} ${ev.milkType || ''}</span>
-                        <small>${ev.amount ? ev.amount+'ml' : ''} | ${new Date(ev.date).toLocaleString([], {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})}</small>
-                    </li>
-                `).join('');
+                document.getElementById('summaryCards').innerHTML = `<div class="col-12"><div class="card p-2 bg-primary text-white">Dzisiaj: ${dailyTotal} ml</div></div>`;
+                document.getElementById('historyList').innerHTML = filtered.slice(-10).reverse().map(ev => `
+                    <li class="list-group-item d-flex justify-content-between px-1">
+                        <span>${ev.type === 'kupa' ? '💩 Kupa' : '🍼 ' + ev.amount + 'ml'}</span>
+                        <span class="text-muted">${new Date(ev.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                    </li>`).join('');
             };
         }
     </script>
