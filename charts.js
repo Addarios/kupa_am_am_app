@@ -1,32 +1,76 @@
 let myChart = null;
 
 // Funkcja inicjująca wykres
-async function initChart(type = 'feeding') {
+// Rozbudowana funkcja inicjująca
+async function initChart(type = 'feeding', scale = 'hour') {
     const ctx = document.getElementById('myChart').getContext('2d');
-    
-    // Pobieramy dane z bazy (korzystamy z funkcji z db.js)
     const events = await window.getAllEntries('events');
     const weights = await window.getAllEntries('weight_history');
-    const children = await window.getAllEntries('children');
     const selectedChildId = parseInt(document.getElementById('globalChildSelect').value);
 
-    if (!selectedChildId) {
-        ctx.font = "16px Arial";
-        ctx.fillText("Wybierz dziecko, aby zobaczyć wykres", 10, 50);
-        return;
-    }
-
-    // Jeśli wykres już istnieje, niszczymy go przed narysowaniem nowego
-    if (myChart) {
-        myChart.destroy();
-    }
+    if (!selectedChildId) return;
+    if (myChart) myChart.destroy();
 
     if (type === 'feeding') {
-        renderFeedingChart(ctx, events, selectedChildId);
+        if (scale === 'hour') {
+            renderFeedingChart(ctx, events, selectedChildId); // To co już masz (dzisiaj po godzinach)
+        } else {
+            renderDailyFeedingChart(ctx, events, selectedChildId); // NOWOŚĆ: Dni
+        }
     } else {
         renderWeightChart(ctx, weights, selectedChildId);
     }
+
+    
 }
+
+// NOWA FUNKCJA: Raport dniowy (ostatnie 7 dni)
+function renderDailyFeedingChart(ctx, events, childId) {
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        last7Days.push(d.toDateString());
+    }
+
+    const totalsByDay = new Array(7).fill(0);
+
+    events.filter(e => e.childId === childId && e.type === 'posiłek').forEach(m => {
+        const mealDate = new Date(m.date).toDateString();
+        const dayIndex = last7Days.indexOf(mealDate);
+        if (dayIndex !== -1) {
+            totalsByDay[dayIndex] += m.amount;
+        }
+    });
+
+    // Formatuje daty do ładniejszego wyglądu (np. "24.03")
+    const labels = last7Days.map(dateStr => {
+        const d = new Date(dateStr);
+        return `${d.getDate()}.${d.getMonth() + 1}`;
+    });
+
+    myChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Suma ml / dzień',
+                data: totalsByDay,
+                backgroundColor: 'rgba(153, 102, 255, 0.6)',
+                borderColor: 'rgba(153, 102, 255, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+}
+
+// Podpięcie przycisków skali w HTML
+document.getElementById('btnScaleHour').onclick = () => initChart('feeding', 'hour');
+document.getElementById('btnScaleDay').onclick = () => initChart('feeding', 'day');
 
 function renderFeedingChart(ctx, events, childId) {
     const today = new Date().toDateString();
