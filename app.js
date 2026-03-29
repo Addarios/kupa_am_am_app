@@ -99,6 +99,7 @@ async function refreshChildrenList() {
 }
 
 async function addChild() {
+    alert("Przycisk kliknięty!"); // Dodaj to!
     console.log("Próba dodania dziecka...");
     const nameEl = document.getElementById('childName');
     const birthEl = document.getElementById('childBirth');
