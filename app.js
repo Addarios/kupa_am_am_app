@@ -7,16 +7,35 @@ function initApp() {
     refreshChildrenList();
     setCurrentTime();
 
-    // Obsługa nawigacji
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            const tabId = e.target.dataset.tab;
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active-tab'));
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active-tab');
-            e.target.classList.add('active');
-            updateUI(tabId);
-        });
+    // POPRAWIONA OBSŁUGA NAWIGACJI
+    const navItems = document.querySelectorAll('.nav-item');
+    
+    navItems.forEach(item => {
+        item.onclick = (e) => {
+            // Znajduje najbliższy element z klasą nav-item (nawet jeśli klikniesz w ikonkę)
+            const clickedItem = e.target.closest('.nav-item');
+            if (!clickedItem) return;
+
+            const tabId = clickedItem.getAttribute('data-tab');
+            
+            // 1. Ukryj wszystkie zakładki
+            document.querySelectorAll('.tab-content').forEach(t => {
+                t.classList.remove('active-tab');
+            });
+
+            // 2. Usuń klasę active ze wszystkich przycisków
+            navItems.forEach(n => n.classList.remove('active'));
+
+            // 3. Pokaż wybraną zakładkę i dodaj klasę active
+            const targetTab = document.getElementById(tabId);
+            if (targetTab) {
+                targetTab.classList.add('active-tab');
+                clickedItem.classList.add('active');
+                
+                // 4. Odśwież dane dla konkretnej zakładki
+                updateUI(tabId);
+            }
+        };
     });
 
     // Event Listenery dla przycisków
