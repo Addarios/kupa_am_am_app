@@ -1,37 +1,85 @@
 let db;
-const request = indexedDB.open("BabyTrackerProDB", 7);
+const request = indexedDB.open("BabyTrackerProDB", 8);
 
+// 1. Obsługa tworzenia struktury bazy
 request.onupgradeneeded = (e) => {
-    db = e.target.result;
-    if (!db.objectStoreNames.contains("events")) db.createObjectStore("events", { keyPath: "id", autoIncrement: true });
-    if (!db.objectStoreNames.contains("children")) db.createObjectStore("children", { keyPath: "id", autoIncrement: true });
-    if (!db.objectStoreNames.contains("weight_history")) db.createObjectStore("weight_history", { keyPath: "id", autoIncrement: true });
+    let database = e.target.result;
+    console.log("Tworzenie/Aktualizacja struktury bazy...");
+    if (!database.objectStoreNames.contains("events")) {
+        database.createObjectStore("events", { keyPath: "id", autoIncrement: true });
+    }
+    if (!database.objectStoreNames.contains("children")) {
+        database.createObjectStore("children", { keyPath: "id", autoIncrement: true });
+    }
+    if (!database.objectStoreNames.contains("weight_history")) {
+        database.createObjectStore("weight_history", { keyPath: "id", autoIncrement: true });
+    }
 };
 
-window.getDB = () => new Promise((resolve, reject) => {
-    if (db) resolve(db);
-    request.onsuccess = (e) => resolve(e.target.result);
-    request.onerror = (e) => reject("Błąd bazy danych");
-});
+// 2. Obsługa sukcesu otwarcia
+request.onsuccess = (e) => {
+    db = e.target.result;
+    console.log("Połączenie z IndexedDB ustanowione.");
+};
 
-window.addEntry = async function(storeName, data) {
-    const database = await getDB(); // Pobiera bazę danych
+request.onerror = (e) => {
+    console.error("Błąd krytyczny IndexedDB:", e.target.error);
+};
+
+// 3. Funkcja pobierająca bazę (z poprawionym czekaniem)
+window.getDB = () => {
     return new Promise((resolve, reject) => {
-        const tx = database.transaction(storeName, "readwrite");
-        const store = tx.objectStore(storeName);
-        const request = store.add(data);
-
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = (e) => {
-            console.error("Błąd zapisu do " + storeName, e.target.error);
-            reject(e.target.error);
+        if (db) {
+            resolve(db);
+            return;
+        }
+        // Jeśli db jeszcze nie ma, czekamy na sukces requestu
+        request.onsuccess = (e) => {
+            db = e.target.result;
+            resolve(db);
         };
+        request.onerror = () => reject("Nie udało się otworzyć bazy danych");
     });
-}
+};
 
-window.getAllEntries = async function(storeName) {
-    const database = await getDB();
-    return new Promise(resolve => {
-        database.transaction(storeName, "readonly").objectStore(storeName).getAll().onsuccess = (e) => resolve(e.target.result);
+// 4. Uniwersalna funkcja zapisu
+window.addEntry = async function(storeName, data) {
+    const database = await window.getDB(); 
+    return new Promise((resolve, reject) => {
+        try {
+            const tx = database.transaction(storeName, "readwrite");
+            const store = tx.objectStore(storeName);
+            const addRequest = store.add(data);
+
+            addRequest.onsuccess = () => {
+                console.log(`Zapisano pomyślnie do ${storeName}`);
+                resolve(addRequest.result);
+            };
+
+            addRequest.onerror = (e) => {
+                console.error(`Błąd zapisu do ${storeName}:`, e.target.error);
+                reject(e.target.error);
+            };
+        } catch (err) {
+            console.error("Błąd transakcji:", err);
+            reject(err);
+        }
     });
-}
+};
+
+// 5. Uniwersalna funkcja pobierania
+window.getAllEntries = async function(storeName) {
+    const database = await window.getDB();
+    return new Promise((resolve, reject) => {
+        try {
+            const tx = database.transaction(storeName, "readonly");
+            const store = tx.objectStore(storeName);
+            const getRequest = store.getAll();
+
+            getRequest.onsuccess = (e) => resolve(e.target.result);
+            getRequest.onerror = (e) => reject(e.target.error);
+        } catch (err) {
+            reject(err);
+        }
+    });
+};
