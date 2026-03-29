@@ -3,27 +3,47 @@
  */
 function switchTab(tabId) {
     console.log("Przełączanie na:", tabId);
+    
+    // 1. Ukryj wszystkie sekcje
     const tabs = document.querySelectorAll('.tab-content');
     tabs.forEach(t => t.classList.remove('active-tab'));
 
+    // 2. Dezaktywuj przyciski menu
     const navs = document.querySelectorAll('.nav-item');
     navs.forEach(n => n.classList.remove('active'));
 
+    // 3. Pokaż wybraną sekcję
     const target = document.getElementById(tabId);
     if (target) {
         target.classList.add('active-tab');
+        
+        // Szukamy przycisku nawigacji po ID (np. nav-today, nav-meal)
         const activeNav = document.getElementById('nav-' + tabId);
         if (activeNav) activeNav.classList.add('active');
         
-        // Wywołanie odświeżania danych dla konkretnej zakładki
+        // 4. Wywołanie odświeżania danych dla konkretnej zakładki
         if (tabId === 'today') updateUI('today');
+        
         if (tabId === 'meal') setCurrentTime('mealDateTime');
+        
         if (tabId === 'poop') setCurrentTime('poopDateTime');
+        
         if (tabId === 'weight') {
             setCurrentTime('weightDate');
             loadWeightHistory();
         }
+        
+        // NOWOŚĆ: Obsługa zakładki wykresów
+        if (tabId === 'analytics') {
+            if (typeof initChart === "function") {
+                initChart('feeding'); // Domyślnie ładuj wykres posiłków
+            }
+        }
+        
         if (tabId === 'settings') renderChildrenList();
+        
+    } else {
+        console.error("Nie znaleziono sekcji o ID:", tabId);
     }
 }
 
