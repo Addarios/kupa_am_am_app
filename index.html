@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0d6efd">
+    <title>Dziennik Bobasa PWA</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; font-family: sans-serif; padding-bottom: 70px; }
+        .tab-content { display: none; padding: 20px; }
+        .active-tab { display: block; }
+        .poop-btn { 
+            width: 150px; height: 150px; border-radius: 50%; 
+            font-size: 50px; background-color: #795548; border: none; color: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .nav-bottom {
+            position: fixed; bottom: 0; width: 100%; background: white;
+            display: flex; justify-content: space-around; border-top: 1px solid #ddd;
+        }
+        .nav-item { padding: 10px; text-align: center; cursor: pointer; flex: 1; }
+        .nav-item.active { color: #0d6efd; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="report" class="tab-content active-tab text-center">
+        <h2 class="mb-4">Podsumowanie</h2>
+        <div class="card mb-3 p-3">
+            <h5 id="dailySum">Dzisiaj: 0 ml</h5>
+        </div>
+        <ul id="historyList" class="list-group list-group-flush">
+            </ul>
+    </div>
+
+    <div id="meal" class="tab-content text-center">
+        <h2>Dodaj Posiłek</h2>
+        <div class="mt-4 text-start">
+            <label class="form-label">Rodzaj mleka:</label>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="milkType" id="m1" value="Pierś" checked>
+                <label class="form-check-label" for="m1">Karmienie piersią</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="milkType" id="m2" value="Butelka (Matka)">
+                <label class="form-check-label" for="m2">Mleko matki (butelka)</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="milkType" id="m3" value="Modyfikowane">
+                <label class="form-check-label" for="m3">Mleko modyfikowane</label>
+            </div>
+            
+            <div class="mt-3">
+                <label class="form-label">Ilość (ml):</label>
+                <input type="number" id="mlAmount" class="form-control" placeholder="Np. 120">
+            </div>
+            
+            <button onclick="saveMeal()" class="btn btn-primary w-100 mt-4 py-3">ZAPISZ POSIŁEK</button>
+        </div>
+    </div>
+
+    <div id="poop" class="tab-content text-center">
+        <h2 class="mb-5">Zanotuj kupę</h2>
+        <button onclick="savePoop()" class="poop-btn">💩</button>
+        <p class="mt-3 text-muted">Kliknij, aby zapisać natychmiast</p>
+    </div>
+
+    <nav class="nav-bottom">
+        <div class="nav-item active" onclick="showTab('report')">📊 Raport</div>
+        <div class="nav-item" onclick="showTab('meal')">🍼 Posiłek</div>
+        <div class="nav-item" onclick="showTab('poop')">💩 Kupa</div>
+    </nav>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+            .then(() => console.log("Service Worker zarejestrowany!"));
+        }
+        let db;
+        // Inicjalizacja bazy IndexedDB (Lokalna baza w przeglądarce)
+        const request = indexedDB.open("BabyTrackerDB", 1);
+        
+        request.onupgradeneeded = e => {
+            db = e.target.result;
+            db.createObjectStore("events", { keyPath: "id", autoIncrement: true });
+        };
+        
+        request.onsuccess = e => {
+            db = e.target.result;
+            loadHistory();
+        };
+
+        // Przełączanie widoków
+        function showTab(id) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active-tab'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(id).classList.add('active-tab');
+            event.currentTarget.classList.add('active');
+            if(id === 'report') loadHistory();
+        }
+
+        // Zapisywanie danych
+        function saveData(data) {
+            const tx = db.transaction("events", "readwrite");
+            tx.objectStore("events").add({...data, date: new Date()});
+            tx.oncomplete = () => {
+                alert("Zapisano!");
+                showTab('report');
+            };
+        }
+
+        function saveMeal() {
+            const milk = document.querySelector('input[name="milkType"]:checked').value;
+            const ml = document.getElementById('mlAmount').value || 0;
+            saveData({ type: 'posiłek', milkType: milk, amount: parseInt(ml) });
+            document.getElementById('mlAmount').value = '';
+        }
+
+        function savePoop() {
+            saveData({ type: 'kupa', amount: 0 });
+        }
+
+        // Ładowanie historii i sumowanie ml
+        function loadHistory() {
+            const tx = db.transaction("events", "readonly");
+            const store = tx.objectStore("events");
+            const request = store.getAll();
+            
+            request.onsuccess = () => {
+                const data = request.result.reverse(); // Najnowsze na górze
+                let html = "";
+                let dailyTotal = 0;
+                const today = new Date().toDateString();
+
+                data.forEach(item => {
+                    const itemDate = new Date(item.date);
+                    const timeStr = itemDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    
+                    if(itemDate.toDateString() === today) {
+                        dailyTotal += (item.amount || 0);
+                    }
+
+                    html += `<li class="list-group-item d-flex justify-content-between">
+                        <span>${item.type === 'kupa' ? '💩 Kupa' : '🍼 ' + item.milkType}</span>
+                        <span class="text-muted">${item.amount > 0 ? item.amount + 'ml | ' : ''} ${timeStr}</span>
+                    </li>`;
+                });
+                
+                document.getElementById('historyList').innerHTML = html;
+                document.getElementById('dailySum').innerText = `Dzisiaj zjedzono: ${dailyTotal} ml`;
+            };
+        }
+    </script>
+</body>
+</html>

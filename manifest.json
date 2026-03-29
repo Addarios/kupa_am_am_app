@@ -1,0 +1,17 @@
+{
+  "name": "Dziennik Bobasa PWA",
+  "short_name": "Bobas",
+  "description": "Aplikacja do śledzenia posiłków i pielęgnacji dziecka",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0d6efd",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1046/1046310.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
