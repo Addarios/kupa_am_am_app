@@ -23,6 +23,22 @@ function switchTab(tabId) {
         console.error("Nie znaleziono sekcji:", tabId);
     }
 }
+function showTab(id) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active-tab'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById(id).classList.add('active-tab');
+    
+    // Obsługa zdarzeń przy wejściu w zakładkę
+    if(id === 'meal') {
+        setCurrentTime('mealDateTime');
+    }
+    if(id === 'report') loadHistory();
+    if(id === 'settings') renderChildrenList();
+    if(id === 'weight_tab') {
+        // Tu też możesz dodać setCurrentTime jeśli dodasz pole daty do wagi
+        loadWeightHistory();
+    }
+}
 
 // Funkcja aktualizacji widoku
 async function updateUI(tabId) {
@@ -66,7 +82,12 @@ async function updateUI(tabId) {
         }).join('');
     }
 }
-
+function setCurrentTime(elementId) {
+    const now = new Date();
+    // Formatowanie do YYYY-MM-DDTHH:mm (wymagane przez datetime-local)
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById(elementId).value = now.toISOString().slice(0, 16);
+}
 // Inicjalizacja po załadowaniu strony
 // Ten blok kodu wykonuje się SAMODZIELNIE zaraz po wczytaniu strony
 document.addEventListener('DOMContentLoaded', async () => {
@@ -88,30 +109,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error("Błąd podczas startu aplikacji:", e);
     }
 });
-
+function getSelectedChild() {
+    const select = document.getElementById('globalChildSelect');
+    if (!select || !select.value) {
+        alert("Najpierw wybierz dziecko na górze strony!");
+        return null;
+    }
+    return parseInt(select.value);
+}
 // Funkcje zapisu (uproszczone dla testu)
 // Poprawiona funkcja zapisu posiłku
-async function saveMeal() {
-    const childId = getChildId();
-    const dateVal = document.getElementById('mealDateTime').value;
-    const amount = parseInt(document.getElementById('mlAmount').value);
+function saveMeal() {
+    // Sprawdzamy czy funkcja getSelectedChild istnieje (powinna być zdefiniowana wcześniej)
+    const childId = getSelectedChild(); 
+    if(!childId) return; // alert jest wewnątrz getSelectedChild
 
-    if (!childId || !dateVal || isNaN(amount)) {
-        alert("Wybierz dziecko, datę i podaj ilość ml!");
-        return;
-    }
+    const milk = document.getElementById('milkType').value;
+    const ml = parseInt(document.getElementById('mlAmount').value) || 0;
+    const customDate = document.getElementById('mealDateTime').value;
 
-    const data = {
-        childId,
-        type: 'posiłek',
-        milkType: document.getElementById('milkType').value,
-        amount: amount,
-        date: new Date(dateVal).getTime() // Zapisujemy jako znacznik czasu (liczba)
+    const tx = db.transaction("events", "readwrite");
+    tx.objectStore("events").add({ 
+        childId: childId, 
+        type: 'posiłek', 
+        milkType: milk, 
+        amount: ml, 
+        date: new Date(customDate) // Zapisuje datę wybraną przez użytkownika
+    });
+
+    tx.oncomplete = () => {
+        alert("Zapisano posiłek!");
+        document.getElementById('mlAmount').value = '';
+        showTab('report'); // Wraca do raportu
     };
-
-    await addEntry('events', data);
-    alert("Zapisano posiłek!");
-    switchTab('today');
+    
+    tx.onerror = (e) => {
+        console.error("Błąd zapisu:", e.target.error);
+    };
 }
 
 // Poprawiona funkcja zapisu kupy
