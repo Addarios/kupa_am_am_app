@@ -8,13 +8,13 @@ request.onupgradeneeded = (e) => {
     if (!db.objectStoreNames.contains("weight_history")) db.createObjectStore("weight_history", { keyPath: "id", autoIncrement: true });
 };
 
-const getDB = () => new Promise((resolve, reject) => {
+window.getDB = () => new Promise((resolve, reject) => {
     if (db) resolve(db);
     request.onsuccess = (e) => resolve(e.target.result);
     request.onerror = (e) => reject("Błąd bazy danych");
 });
 
-async function addEntry(storeName, data) {
+window.addEntry = async function(storeName, data) {
     const database = await getDB(); // Pobiera bazę danych
     return new Promise((resolve, reject) => {
         const tx = database.transaction(storeName, "readwrite");
@@ -29,7 +29,7 @@ async function addEntry(storeName, data) {
     });
 }
 
-async function getAllEntries(storeName) {
+window.getAllEntries = async function(storeName) {
     const database = await getDB();
     return new Promise(resolve => {
         database.transaction(storeName, "readonly").objectStore(storeName).getAll().onsuccess = (e) => resolve(e.target.result);

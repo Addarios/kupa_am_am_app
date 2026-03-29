@@ -48,36 +48,47 @@ function getSelectedChildId() {
  * ZAPISYWANIE DANYCH (ASYNC)
  */
 async function addChild() {
-    console.log("Próba dodania dziecka...");
-    const name = document.getElementById('childName').value;
-    const birth = document.getElementById('childBirth').value;
-    const weight = document.getElementById('childWeight').value;
-    const gender = document.getElementById('childGender').value;
-
-    if (!name || !birth) {
-        alert("Podaj przynajmniej imię i datę urodzenia!");
-        return;
-    }
-
-    const data = {
-        name,
-        birth,
-        gender,
-        weight: parseInt(weight) || 0
-    };
-
+    console.log("1. Start addChild");
     try {
-        await addEntry('children', data);
-        alert("Dziecko dodane pomyślnie!");
-        // Czyścimy pola
-        document.getElementById('childName').value = "";
-        document.getElementById('childWeight').value = "";
-        // Odświeżamy listy
+        const nameEl = document.getElementById('childName');
+        const birthEl = document.getElementById('childBirth');
+        const weightEl = document.getElementById('childWeight');
+        const genderEl = document.getElementById('childGender');
+
+        if (!nameEl || !birthEl) {
+            console.error("Nie znaleziono pól formularza w HTML!");
+            return;
+        }
+
+        const data = {
+            name: nameEl.value,
+            birth: birthEl.value,
+            gender: genderEl.value,
+            weight: parseInt(weightEl.value) || 0
+        };
+
+        console.log("2. Dane przygotowane:", data);
+
+        if (!data.name || !data.birth) {
+            alert("Podaj imię i datę urodzenia!");
+            return;
+        }
+
+        console.log("3. Wywołuję addEntry z db.js...");
+        // Używamy window.addEntry, żeby mieć pewność, że widzi funkcję z drugiego pliku
+        await window.addEntry('children', data);
+        
+        console.log("4. Zapis zakończony sukcesem!");
+        alert("Dziecko dodane!");
+        
+        nameEl.value = "";
+        if(weightEl) weightEl.value = "";
+        
         await refreshChildrenList();
         await renderChildrenList();
     } catch (e) {
-        console.error("Błąd addChild:", e);
-        alert("Błąd zapisu dziecka.");
+        console.error("BŁĄD w addChild:", e);
+        alert("Wystąpił błąd: " + e.message);
     }
 }
 
