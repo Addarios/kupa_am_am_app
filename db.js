@@ -1,5 +1,5 @@
 let db;
-const request = indexedDB.open("BabyTrackerProDB", 6);
+const request = indexedDB.open("BabyTrackerProDB", 7);
 
 request.onupgradeneeded = (e) => {
     db = e.target.result;

@@ -197,36 +197,59 @@ async function refreshChildrenList() {
     }
 }
 
-async function addChild() {
+function addChild() {
     console.log("1. Start funkcji addChild");
-    const nameEl = document.getElementById('childName');
-    const birthEl = document.getElementById('childBirth');
+    
+    const name = document.getElementById('childName').value;
+    const birth = document.getElementById('childBirth').value;
+    const weight = document.getElementById('childWeight').value;
+    const gender = document.getElementById('childGender').value;
 
-    if (!nameEl.value || !birthEl.value) {
-        alert("Wypełnij imię i datę!");
+    if(!name || !birth) {
+        alert("Imię i data urodzenia są wymagane!");
         return;
     }
 
-    const newChild = { 
-        name: nameEl.value, 
-        birth: birthEl.value 
+    const childData = { 
+        name, 
+        birth, 
+        gender, 
+        weight: parseInt(weight) || 0 
     };
 
-    console.log("2. Dane do zapisu:", newChild);
+    console.log("2. Dane do zapisu:", childData);
 
     try {
-        // Tu najczęściej następuje blokada
-        await addEntry('children', newChild); 
-        console.log("3. Sukces! Zapisano w IndexedDB");
-
-        nameEl.value = "";
-        birthEl.value = "";
+        const tx = db.transaction("children", "readwrite");
+        const store = tx.objectStore("children");
         
-        await refreshChildrenList();
-        alert("Dodano dziecko!");
+        // Używamy .add() dla nowych rekordów
+        const request = store.add(childData);
+
+        request.onsuccess = () => {
+            console.log("3. Sukces: Dziecko zapisane w IndexedDB");
+            // Czyszczenie formularza
+            document.getElementById('childName').value = "";
+            document.getElementById('childWeight').value = "";
+            
+            // Odświeżenie widoków
+            refreshChildrenData();
+            renderChildrenList();
+            alert("Dziecko zostało dodane!");
+        };
+
+        request.onerror = (e) => {
+            console.error("Błąd zapisu w request:", e.target.error);
+            alert("Błąd bazy danych: " + e.target.error.name);
+        };
+
+        tx.oncomplete = () => {
+            console.log("4. Transakcja zakończona całkowicie.");
+        };
+
     } catch (err) {
-        console.error("BŁĄD w kroku 3:", err);
-        alert("Błąd bazy danych: " + err);
+        console.error("Błąd krytyczny w addChild:", err);
+        alert("Wystąpił błąd podczas komunikacji z bazą. Spróbuj 'Wymuś aktualizację' w ustawieniach.");
     }
 }
 // 1. Czyszczenie tylko plików aplikacji (HTML/JS/CSS) - BEZPIECZNE
