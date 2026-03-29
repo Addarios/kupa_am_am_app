@@ -45,6 +45,39 @@ function initApp() {
     document.getElementById('btnAddChild').onclick = addChild;
     document.getElementById('globalChildSelect').onchange = () => updateUI('today');
 }
+function switchTab(tabId) {
+    console.log("Przełączam na:", tabId); // To sprawdzisz w konsoli F12
+
+    // 1. Ukryj wszystkie sekcje
+    const tabs = document.getElementsByClassName('tab-content');
+    for (let tab of tabs) {
+        tab.classList.remove('active-tab');
+    }
+
+    // 2. Dezaktywuj wszystkie przyciski menu
+    const navs = document.getElementsByClassName('nav-item');
+    for (let nav of navs) {
+        nav.classList.remove('active');
+    }
+
+    // 3. Pokaż wybraną sekcję
+    const target = document.getElementById(tabId);
+    if (target) {
+        target.classList.add('active-tab');
+    } else {
+        console.error("Nie znaleziono sekcji o ID:", tabId);
+    }
+
+    // 4. Podświetl wybrany przycisk (używając ID, które dodaliśmy w HTML)
+    const activeNav = document.getElementById('nav-' + tabId);
+    if (activeNav) {
+        activeNav.classList.add('active');
+    }
+
+    // 5. Odśwież dane
+    updateUI(tabId);
+    if(tabId === 'meal' || tabId === 'poop') setCurrentTime();
+}
 
 function getChildId() {
     return parseInt(document.getElementById('globalChildSelect').value) || null;

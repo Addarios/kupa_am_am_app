@@ -80,14 +80,14 @@
         <div id="childrenList"></div>
     </div>
 
-    <nav class="nav-bottom">
-        <div class="nav-item active" data-tab="today">🏠 Dziś</div>
-        <div class="nav-item" data-tab="meal">🍼 Jemy</div>
-        <div class="nav-item" data-tab="poop">💩 Kupa</div>
-        <div class="nav-item" data-tab="weight">⚖️ Waga</div>
-        <div class="nav-item" data-tab="analytics">📈 Raport</div>
-        <div class="nav-item" data-tab="settings">⚙️ Profil</div>
-    </nav>
+<nav class="nav-bottom">
+    <div class="nav-item active" id="nav-today" onclick="switchTab('today')">🏠 Dziś</div>
+    <div class="nav-item" id="nav-meal" onclick="switchTab('meal')">🍼 Jemy</div>
+    <div class="nav-item" id="nav-poop" onclick="switchTab('poop')">💩 Kupa</div>
+    <div class="nav-item" id="nav-weight" onclick="switchTab('weight')">⚖️ Waga</div>
+    <div class="nav-item" id="nav-analytics" onclick="switchTab('analytics')">📈 Raport</div>
+    <div class="nav-item" id="nav-settings" onclick="switchTab('settings')">⚙️ Profil</div>
+</nav>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="db.js"></script>
