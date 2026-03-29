@@ -195,3 +195,31 @@ async function addChild() {
         alert("Błąd bazy danych: " + err);
     }
 }
+// 1. Czyszczenie tylko plików aplikacji (HTML/JS/CSS) - BEZPIECZNE
+async function clearAppCache() {
+    if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (let registration of registrations) {
+            await registration.unregister(); // Wyrejestruj SW
+        }
+    }
+    
+    // Usuń wszystkie magazyny cache przeglądarki
+    const cacheNames = await caches.keys();
+    await Promise.all(
+        cacheNames.map(name => caches.delete(name))
+    );
+
+    alert("Pamięć podręczna wyczyszczona. Aplikacja przeładuje się teraz.");
+    window.location.reload(true); // Wymuś przeładowanie z serwera
+}
+
+// 2. Całkowity reset (Dane dzieci + pliki) - NIEBEZPIECZNE
+function resetFullApp() {
+    if (confirm("CZY NA PEWNO? To usunie wszystkie dane dzieci, wagę i historię posiłków bezpowrotnie!")) {
+        const req = indexedDB.deleteDatabase("BabyTrackerProDB");
+        req.onsuccess = () => {
+            clearAppCache(); // Czyści też pliki i przeładowuje
+        };
+    }
+}

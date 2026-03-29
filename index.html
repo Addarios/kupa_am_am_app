@@ -77,6 +77,17 @@
             <input type="date" id="childBirth" class="form-control mb-2">
             <button id="btnAddChild" onclick="addChild()" class="btn btn-dark w-100">Dodaj profil</button>        </div>
         <div id="childrenList"></div>
+        <hr class="my-4">
+        <h5 class="text-danger">Ustawienia systemowe</h5>
+        <div class="card p-3 shadow-sm border-danger">
+            <p class="small text-muted">Jeśli aplikacja nie wyświetla nowych funkcji, użyj poniższego przycisku.</p>
+            <button onclick="clearAppCache()" class="btn btn-outline-danger w-100 mb-2">
+                🔄 Wymuś aktualizację (Czyść Cache)
+            </button>
+            <button onclick="resetFullApp()" class="btn btn-danger w-100">
+                ⚠️ USUŃ WSZYSTKIE DANE (Reset)
+            </button>
+        </div>
     </div>
 
 
