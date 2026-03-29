@@ -44,17 +44,24 @@ async function updateUI(tabId) {
 }
 
 // Inicjalizacja po załadowaniu strony
+// Ten blok kodu wykonuje się SAMODZIELNIE zaraz po wczytaniu strony
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("Aplikacja zainicjowana");
+    console.log("Aplikacja startuje...");
     try {
-        await getDB();
-        refreshChildrenList();
-        // Ustawienie domyślnego czasu w polach
-        const now = new Date().toISOString().slice(0, 16);
-        if(document.getElementById('mealDateTime')) document.getElementById('mealDateTime').value = now;
-        if(document.getElementById('poopDateTime')) document.getElementById('poopDateTime').value = now;
+        // Czekamy na połączenie z bazą (z pliku db.js)
+        await getDB(); 
+        console.log("Baza danych gotowa.");
+
+        // Ładujemy listę dzieci do selektora na górze
+        await refreshChildrenList();
+        
+        // Ustawiamy aktualną datę w formularzach
+        setCurrentTime();
+        
+        // Ładujemy historię dla domyślnego widoku
+        updateUI('today');
     } catch (e) {
-        console.error("Błąd inicjalizacji:", e);
+        console.error("Błąd podczas startu aplikacji:", e);
     }
 });
 
@@ -92,10 +99,35 @@ async function refreshChildrenList() {
 }
 
 async function addChild() {
-    const name = document.getElementById('childName').value;
-    const birth = document.getElementById('childBirth').value;
-    if(!name) return alert("Podaj imię!");
-    await addEntry('children', { name, birth });
-    document.getElementById('childName').value = "";
-    refreshChildrenList();
+    console.log("Próba dodania dziecka...");
+    const nameEl = document.getElementById('childName');
+    const birthEl = document.getElementById('childBirth');
+
+    if (!nameEl || !birthEl) {
+        console.error("Nie znaleziono pól formularza w HTML!");
+        return;
+    }
+
+    const name = nameEl.value;
+    const birth = birthEl.value;
+
+    if (!name || !birth) {
+        alert("Proszę podać imię i datę urodzenia!");
+        return;
+    }
+
+    try {
+        await addEntry('children', { name, birth });
+        console.log("Dziecko dodane pomyślnie");
+        
+        // Czyścimy pola
+        nameEl.value = "";
+        birthEl.value = "";
+        
+        // Odświeżamy listy
+        await refreshChildrenList();
+        alert("Dodano profil: " + name);
+    } catch (err) {
+        console.error("Błąd zapisu dziecka:", err);
+    }
 }
