@@ -233,12 +233,65 @@ async function updateUI(tabId) {
 
 async function renderChildrenList() {
     const children = await getAllEntries('children');
-    document.getElementById('childrenList').innerHTML = children.map(c => `
-        <div class="col-12 border-bottom p-2 d-flex justify-content-between">
-            <span><strong>${c.name}</strong> (${c.gender})</span>
-            <small class="text-muted">Ur. ${c.birth}</small>
+    const list = document.getElementById('childrenList');
+    if (!list) return;
+
+    list.innerHTML = children.map(c => `
+        <div class="col-12">
+            <div class="card p-3 shadow-sm border-0 mb-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>${c.name}</strong> 
+                        <div class="small text-muted">${c.gender} | Ur. ${c.birth}</div>
+                    </div>
+                    <button onclick="showFullHistory(${c.id}, '${c.name}')" class="btn btn-primary btn-sm">
+                        📜 Historia
+                    </button>
+                </div>
+            </div>
         </div>
     `).join('');
+}
+async function showFullHistory(childId, childName) {
+    document.getElementById('profilesView').style.display = 'none';
+    document.getElementById('fullHistoryView').style.display = 'block';
+    document.getElementById('historyChildName').innerText = `Historia: ${childName}`;
+
+    const events = await getAllEntries('events');
+    const childEvents = events
+        .filter(e => e.childId === childId)
+        .sort((a, b) => b.date - a.date); // Od najnowszych
+
+    const historyList = document.getElementById('fullHistoryList');
+    
+    if (childEvents.length === 0) {
+        historyList.innerHTML = '<li class="list-group-item text-center text-muted">Brak wpisów dla tego dziecka</li>';
+        return;
+    }
+
+    historyList.innerHTML = childEvents.map(e => {
+        const dateObj = new Date(e.date);
+        const dateStr = dateObj.toLocaleDateString();
+        const timeStr = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        
+        let label = e.type === 'kupa' ? '💩 Kupa' : (e.milkType === 'Pierś' ? '🤱 Pierś' : `🍼 ${e.amount}ml (${e.milkType})`);
+
+        return `
+            <li class="list-group-item d-flex justify-content-between align-items-center" 
+                onclick="openEditModal(${e.id}, 'events', ${e.amount || 0}, '${dateObj.toISOString().slice(0,16)}', '${e.milkType}', '${e.type}')">
+                <div>
+                    <div class="fw-bold">${label}</div>
+                    <small class="text-muted">${dateStr}, ${timeStr}</small>
+                </div>
+                <span class="text-primary">✏️</span>
+            </li>`;
+    }).join('');
+}
+
+// 3. Powrót do listy dzieci
+function backToProfiles() {
+    document.getElementById('profilesView').style.display = 'block';
+    document.getElementById('fullHistoryView').style.display = 'none';
 }
 
 async function refreshChildrenList() {
@@ -341,6 +394,13 @@ async function confirmUpdate() {
     alert("Dane zaktualizowane!");
     closeEditModal();
     updateUI('today');
+
+    if (document.getElementById('fullHistoryView').style.display === 'block') {
+        const childName = document.getElementById('historyChildName').innerText.replace('Historia: ', '');
+        // Pobieramy ID z jakiegoś ukrytego pola lub ponownie renderujemy (najprościej wywołać switchTab lub ponownie showFullHistory)
+        // Ale najprościej jest po prostu wymusić ponowne wejście w profil lub zamknąć historię
+        backToProfiles(); 
+    }
 }
 
 async function confirmDelete() {

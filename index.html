@@ -115,7 +115,13 @@
         <div class="px-2 mb-4">
             <h6>Lista dzieci:</h6>
             <div id="childrenList" class="row g-2 mb-4"></div>
-            
+            <div id="fullHistoryView" style="display:none;" class="px-2">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 id="historyChildName">Historia</h5>
+                    <button onclick="backToProfiles()" class="btn btn-sm btn-outline-secondary">⬅ Powrót</button>
+                </div>
+                <ul id="fullHistoryList" class="list-group list-group-flush shadow-sm bg-white rounded"></ul>
+            </div>
             <h5 class="text-danger mt-4">Ustawienia systemowe</h5>
             <div class="card p-3 shadow-sm border-danger bg-light">
                 <p class="small text-muted">Masz problemy z działaniem? Użyj przycisków poniżej:</p>
