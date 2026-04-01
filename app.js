@@ -47,6 +47,16 @@ function switchTab(tabId) {
     }
 }
 
+// Funkcja pomocnicza do formatowania daty dla inputa datetime-local
+function formatLocalDate(dateInput) {
+    const d = new Date(dateInput);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 16);
+}
+
+// Przykład użycia wewnątrz historyList.map:
+const dateForPicker = formatLocalDate(e.date);
+
 function setCurrentTime(elementId) {
     const el = document.getElementById(elementId);
     if (!el) return;
@@ -219,7 +229,7 @@ async function updateUI(tabId) {
                 // Dodajemy onclick i przesyłamy ID oraz typ
                 return `
                 <li class="list-group-item d-flex justify-content-between align-items-center px-2" 
-                    onclick="openEditModal(${e.id}, 'events', ${e.amount}, '${new Date(e.date).toISOString().slice(0,16)}', '${e.milkType}', '${e.type}')">
+                        onclick="openEditModal(${e.id}, 'events', ${e.amount}, '${dateForPicker}', '${e.milkType}', '${e.type}')">                    
                     <span><strong>${child ? child.name : '?'}</strong>: ${label}</span>
                     <small class="text-muted">${time} ✏️</small>
                 </li>`;
@@ -257,20 +267,21 @@ async function showFullHistory(childId, childName) {
     document.getElementById('fullHistoryView').style.display = 'block';
     document.getElementById('historyChildName').innerText = `Historia: ${childName}`;
 
-    const events = await getAllEntries('events');
+    const events = await window.getAllEntries('events');
     const childEvents = events
         .filter(e => e.childId === childId)
-        .sort((a, b) => b.date - a.date); // Od najnowszych
+        .sort((a, b) => b.date - a.date);
 
     const historyList = document.getElementById('fullHistoryList');
     
-    if (childEvents.length === 0) {
-        historyList.innerHTML = '<li class="list-group-item text-center text-muted">Brak wpisów dla tego dziecka</li>';
-        return;
-    }
-
     historyList.innerHTML = childEvents.map(e => {
         const dateObj = new Date(e.date);
+        
+        // POPRAWKA CZASU LOKALNEGO TUTAJ:
+        const localDateForPicker = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000))
+                                    .toISOString()
+                                    .slice(0, 16);
+
         const dateStr = dateObj.toLocaleDateString();
         const timeStr = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         
@@ -278,7 +289,7 @@ async function showFullHistory(childId, childName) {
 
         return `
             <li class="list-group-item d-flex justify-content-between align-items-center" 
-                onclick="openEditModal(${e.id}, 'events', ${e.amount || 0}, '${dateObj.toISOString().slice(0,16)}', '${e.milkType}', '${e.type}')">
+                onclick="openEditModal(${e.id}, 'events', ${e.amount || 0}, '${localDateForPicker}', '${e.milkType}', '${e.type}')">
                 <div>
                     <div class="fw-bold">${label}</div>
                     <small class="text-muted">${dateStr}, ${timeStr}</small>
