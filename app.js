@@ -180,25 +180,25 @@ async function saveWeight() {
 async function updateUI(tabId) {
     if (tabId === 'today') {
         try {
-            const children = await getAllEntries('children');
-            const events = await getAllEntries('events');
-            const todayStr = new Date().toDateString();
+            console.log("Odświeżam stronę główną...");
+            const children = await window.getAllEntries('children');
+            const events = await window.getAllEntries('events');
+            
+            // Pobieramy dzisiejszą datę w formacie lokalnym do porównania
+            const todayStr = new Date().toLocaleDateString();
 
-            // 1. Podsumowanie dla każdego dziecka
+            // 1. PODSUMOWANIE (KARTY)
             let summaryHtml = '<div class="row g-2">';
             children.forEach(child => {
-                // Filtrujemy dzisiejsze zdarzenia tego dziecka
                 const childTodayEvents = events.filter(e => 
                     e.childId === child.id && 
-                    new Date(e.date).toDateString() === todayStr
+                    new Date(e.date).toLocaleDateString() === todayStr
                 );
 
-                // Suma ml (tylko butelki/modyfikowane)
                 const totalMl = childTodayEvents
                     .filter(e => e.type === 'posiłek' && e.milkType !== 'Pierś')
                     .reduce((sum, e) => sum + (parseInt(e.amount) || 0), 0);
 
-                // Liczba karmień piersią
                 const breastCount = childTodayEvents
                     .filter(e => e.type === 'posiłek' && e.milkType === 'Pierś')
                     .length;
@@ -217,23 +217,38 @@ async function updateUI(tabId) {
             summaryHtml += '</div>';
             document.getElementById('summaryCards').innerHTML = summaryHtml;
 
-            // 2. Lista ostatnich zdarzeń (to zostaje bez zmian)
+            // 2. LISTA OSTATNICH 15 ZDARZEŃ (Z poprawką czasu lokalnego)
             const historyList = document.getElementById('historyList');
-            const lastEvents = events.sort((a, b) => b.date - a.date).slice(0, 15);
+            
+            // Sortujemy od najnowszych
+            const sortedEvents = events.sort((a, b) => b.date - a.date).slice(0, 15);
 
-            historyList.innerHTML = lastEvents.map(e => {
+            historyList.innerHTML = sortedEvents.map(e => {
                 const child = children.find(c => c.id === e.childId);
-                const time = new Date(e.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                const label = e.type === 'kupa' ? '💩 Kupa' : (e.milkType === 'Pierś' ? '🤱 Pierś' : `🍼 ${e.amount}ml`);
+                const dateObj = new Date(e.date);
                 
-                // Dodajemy onclick i przesyłamy ID oraz typ
+                // Formatowanie czasu do wyświetlenia
+                const timeStr = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                // Formatowanie daty do inputa (poprawka +2h)
+                const localDateForPicker = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000))
+                                            .toISOString()
+                                            .slice(0, 16);
+
+                let icon = e.type === 'kupa' ? '💩' : '🍼';
+                let label = e.type === 'kupa' ? 'Kupa' : (e.milkType === 'Pierś' ? 'Pierś' : `${e.amount}ml`);
+
                 return `
-                <li class="list-group-item d-flex justify-content-between align-items-center px-2" 
-                        onclick="openEditModal(${e.id}, 'events', ${e.amount}, '${dateForPicker}', '${e.milkType}', '${e.type}')">                    
-                    <span><strong>${child ? child.name : '?'}</strong>: ${label}</span>
-                    <small class="text-muted">${time} ✏️</small>
-                </li>`;
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-2 shadow-none" 
+                        onclick="openEditModal(${e.id}, 'events', ${e.amount || 0}, '${localDateForPicker}', '${e.milkType}', '${e.type}')">
+                        <span><strong>${child ? child.name : '?'}</strong>: ${icon} ${label}</span>
+                        <small class="text-muted">${timeStr} ✏️</small>
+                    </li>`;
             }).join('');
+
+            if (sortedEvents.length === 0) {
+                historyList.innerHTML = '<li class="list-group-item text-center text-muted small">Brak zdarzeń z ostatnich dni</li>';
+            }
             
         } catch (e) {
             console.error("Błąd aktualizacji UI:", e);
