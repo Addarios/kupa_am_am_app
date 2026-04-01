@@ -174,36 +174,62 @@ async function updateUI(tabId) {
             const events = await getAllEntries('events');
             const todayStr = new Date().toDateString();
 
-            // Karty dzieci
-            let html = '<div class="row g-2">';
-            children.forEach(c => {
-                const total = events
-                    .filter(e => e.childId === c.id && e.type === 'posiłek' && new Date(e.date).toDateString() === todayStr)
-                    .reduce((s, e) => s + e.amount, 0);
-                html += `
+            // 1. Podsumowanie dla każdego dziecka
+            let summaryHtml = '<div class="row g-2">';
+            children.forEach(child => {
+                // Filtrujemy dzisiejsze zdarzenia tego dziecka
+                const childTodayEvents = events.filter(e => 
+                    e.childId === child.id && 
+                    new Date(e.date).toDateString() === todayStr
+                );
+
+                // Suma ml (tylko butelki/modyfikowane)
+                const totalMl = childTodayEvents
+                    .filter(e => e.type === 'posiłek' && e.milkType !== 'Pierś')
+                    .reduce((sum, e) => sum + (parseInt(e.amount) || 0), 0);
+
+                // Liczba karmień piersią
+                const breastCount = childTodayEvents
+                    .filter(e => e.type === 'posiłek' && e.milkType === 'Pierś')
+                    .length;
+
+                summaryHtml += `
                     <div class="col-6">
-                        <div class="card p-2 shadow-sm border-0">
-                            <small class="text-muted">${c.name}</small>
-                            <div class="h5 mb-0 text-primary">${total} ml</div>
+                        <div class="card p-2 border-0 shadow-sm bg-white text-center">
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem;">${child.name}</small>
+                            <div class="h5 mb-0 text-primary">${totalMl} ml</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">
+                                🤱 Piersią: <strong>${breastCount}</strong>
+                            </div>
                         </div>
                     </div>`;
             });
-            html += '</div>';
-            document.getElementById('summaryCards').innerHTML = html;
+            summaryHtml += '</div>';
+            document.getElementById('summaryCards').innerHTML = summaryHtml;
 
-            // Lista zdarzeń
+            // 2. Lista ostatnich zdarzeń (to zostaje bez zmian)
             const historyList = document.getElementById('historyList');
-            const lastEvents = events.sort((a,b) => b.date - a.date).slice(0, 15);
+            const lastEvents = events.sort((a, b) => b.date - a.date).slice(0, 15);
             historyList.innerHTML = lastEvents.map(e => {
                 const child = children.find(c => c.id === e.childId);
-                const time = new Date(e.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                const time = new Date(e.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                let icon = e.type === 'kupa' ? '💩' : '🍼';
+                let detail = '';
+                
+                if (e.type === 'posiłek') {
+                    detail = e.milkType === 'Pierś' ? 'Pierś' : `${e.amount}ml`;
+                }
+
                 return `
-                    <li class="list-group-item d-flex justify-content-between px-2">
-                        <span><strong>${child ? child.name : '?'}</strong>: ${e.type === 'kupa' ? '💩' : '🍼 '+e.amount+'ml'}</span>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-2">
+                        <span><strong>${child ? child.name : '?'}</strong>: ${icon} ${detail}</span>
                         <small class="text-muted">${time}</small>
                     </li>`;
             }).join('');
-        } catch (e) { console.log("Błąd UI:", e); }
+            
+        } catch (e) {
+            console.error("Błąd aktualizacji UI:", e);
+        }
     }
 }
 
