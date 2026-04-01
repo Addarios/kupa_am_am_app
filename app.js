@@ -321,13 +321,25 @@ function backToProfiles() {
 }
 
 async function refreshChildrenList() {
-    const children = await getAllEntries('children');
-    const select = document.getElementById('globalChildSelect');
-    if (select) {
-        const val = select.value;
-        select.innerHTML = '<option value="">-- Wybierz dziecko --</option>' + 
-            children.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-        select.value = val;
+    try {
+        const children = await window.getAllEntries('children');
+        const select = document.getElementById('globalChildSelect');
+        
+        if (select) {
+            const currentSelected = select.value; // Zapamiętaj co było wybrane
+            
+            let html = '<option value="">-- Wybierz dziecko --</option>';
+            html += children.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            
+            select.innerHTML = html;
+            
+            // Przywróć wybór, jeśli dziecko wciąż istnieje
+            if (currentSelected) select.value = currentSelected;
+            
+            console.log("Lista dzieci w selektorze odświeżona.");
+        }
+    } catch (e) {
+        console.error("Błąd refreshChildrenList:", e);
     }
 }
 
@@ -348,11 +360,24 @@ async function loadWeightHistory() {
  * SERWIS
  */
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log("Aplikacja startuje...");
     try {
-        await getDB();
+        // 1. Czekamy na połączenie z bazą
+        await window.getDB();
+        console.log("Baza danych gotowa.");
+
+        // 2. Ładujemy listę dzieci do górnego selektora (Kluczowe!)
         await refreshChildrenList();
+        
+        // 3. Ładujemy listę dzieci w widoku profilu (jeśli tam jesteśmy)
+        await renderChildrenList();
+        
+        // 4. Uruchamiamy widok główny
         switchTab('today');
-    } catch(e) { console.error(e); }
+        
+    } catch (e) {
+        console.error("Błąd podczas startu aplikacji:", e);
+    }
 });
 
 async function clearAppCache() {
