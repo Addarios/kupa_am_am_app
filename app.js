@@ -218,11 +218,11 @@ async function updateUI(tabId) {
                 
                 // Dodajemy onclick i przesyłamy ID oraz typ
                 return `
-                    <li class="list-group-item d-flex justify-content-between align-items-center px-2" 
-                        onclick="openEditModal(${e.id}, 'events', ${e.amount}, '${new Date(e.date).toISOString().slice(0,16)}')">
-                        <span><strong>${child ? child.name : '?'}</strong>: ${label}</span>
-                        <small class="text-muted">${time} ✏️</small>
-                    </li>`;
+                <li class="list-group-item d-flex justify-content-between align-items-center px-2" 
+                    onclick="openEditModal(${e.id}, 'events', ${e.amount}, '${new Date(e.date).toISOString().slice(0,16)}', '${e.milkType}', '${e.type}')">
+                    <span><strong>${child ? child.name : '?'}</strong>: ${label}</span>
+                    <small class="text-muted">${time} ✏️</small>
+                </li>`;
             }).join('');
             
         } catch (e) {
@@ -292,11 +292,16 @@ function resetFullApp() {
         location.reload();
     }
 }
-function openEditModal(id, store, amount, date) {
+function openEditModal(id, store, amount, date, milkType, type) {
     document.getElementById('editId').value = id;
     document.getElementById('editStore').value = store;
     document.getElementById('editAmount').value = amount;
     document.getElementById('editDate').value = date;
+    
+    // Jeśli to kupa, ustawiamy typ na kupa, w przeciwnym razie na konkretne mleko
+    const select = document.getElementById('editMilkType');
+    select.value = (type === 'kupa') ? 'kupa' : milkType;
+    
     document.getElementById('editModal').style.display = 'block';
 }
 
@@ -309,17 +314,33 @@ async function confirmUpdate() {
     const store = document.getElementById('editStore').value;
     const amount = parseInt(document.getElementById('editAmount').value);
     const date = new Date(document.getElementById('editDate').value).getTime();
+    const selectedType = document.getElementById('editMilkType').value;
 
-    // Pobieramy stary rekord, żeby nie stracić childId i innych pól
     const all = await window.getAllEntries(store);
     const oldEntry = all.find(e => e.id === id);
 
-    const updatedData = { ...oldEntry, amount: amount, date: date };
+    // Budujemy nowy obiekt danych
+    const updatedData = { 
+        ...oldEntry, 
+        amount: amount, 
+        date: date 
+    };
+
+    // Jeśli wybrano 'kupa', zmieniamy typ główny i zerujemy ml
+    if (selectedType === 'kupa') {
+        updatedData.type = 'kupa';
+        updatedData.milkType = null;
+        updatedData.amount = 0;
+    } else {
+        updatedData.type = 'posiłek';
+        updatedData.milkType = selectedType;
+    }
+
     await window.updateEntry(store, id, updatedData);
     
-    alert("Zaktualizowano!");
+    alert("Dane zaktualizowane!");
     closeEditModal();
-    updateUI('today'); // Odśwież widok
+    updateUI('today');
 }
 
 async function confirmDelete() {
