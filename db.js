@@ -83,3 +83,28 @@ window.getAllEntries = async function(storeName) {
         }
     });
 };
+
+// Aktualizacja istniejącego rekordu
+window.updateEntry = async function(storeName, id, newData) {
+    const database = await window.getDB();
+    return new Promise((resolve, reject) => {
+        const tx = database.transaction(storeName, "readwrite");
+        const store = tx.objectStore(storeName);
+        // Dodajemy ID do obiektu danych, aby nadpisać stary rekord
+        const request = store.put({ ...newData, id: id });
+        request.onsuccess = () => resolve(true);
+        request.onerror = (e) => reject(e.target.error);
+    });
+};
+
+// Usuwanie rekordu
+window.deleteEntry = async function(storeName, id) {
+    const database = await window.getDB();
+    return new Promise((resolve, reject) => {
+        const tx = database.transaction(storeName, "readwrite");
+        const store = tx.objectStore(storeName);
+        const request = store.delete(id);
+        request.onsuccess = () => resolve(true);
+        request.onerror = (e) => reject(e.target.error);
+    });
+};

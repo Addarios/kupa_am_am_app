@@ -210,20 +210,18 @@ async function updateUI(tabId) {
             // 2. Lista ostatnich zdarzeń (to zostaje bez zmian)
             const historyList = document.getElementById('historyList');
             const lastEvents = events.sort((a, b) => b.date - a.date).slice(0, 15);
+
             historyList.innerHTML = lastEvents.map(e => {
                 const child = children.find(c => c.id === e.childId);
-                const time = new Date(e.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                let icon = e.type === 'kupa' ? '💩' : '🍼';
-                let detail = '';
+                const time = new Date(e.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                const label = e.type === 'kupa' ? '💩 Kupa' : (e.milkType === 'Pierś' ? '🤱 Pierś' : `🍼 ${e.amount}ml`);
                 
-                if (e.type === 'posiłek') {
-                    detail = e.milkType === 'Pierś' ? 'Pierś' : `${e.amount}ml`;
-                }
-
+                // Dodajemy onclick i przesyłamy ID oraz typ
                 return `
-                    <li class="list-group-item d-flex justify-content-between align-items-center px-2">
-                        <span><strong>${child ? child.name : '?'}</strong>: ${icon} ${detail}</span>
-                        <small class="text-muted">${time}</small>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-2" 
+                        onclick="openEditModal(${e.id}, 'events', ${e.amount}, '${new Date(e.date).toISOString().slice(0,16)}')">
+                        <span><strong>${child ? child.name : '?'}</strong>: ${label}</span>
+                        <small class="text-muted">${time} ✏️</small>
                     </li>`;
             }).join('');
             
@@ -292,5 +290,46 @@ function resetFullApp() {
     if (confirm("Usuń wszystko?")) {
         indexedDB.deleteDatabase("BabyTrackerProDB");
         location.reload();
+    }
+}
+function openEditModal(id, store, amount, date) {
+    document.getElementById('editId').value = id;
+    document.getElementById('editStore').value = store;
+    document.getElementById('editAmount').value = amount;
+    document.getElementById('editDate').value = date;
+    document.getElementById('editModal').style.display = 'block';
+}
+
+function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+}
+
+async function confirmUpdate() {
+    const id = parseInt(document.getElementById('editId').value);
+    const store = document.getElementById('editStore').value;
+    const amount = parseInt(document.getElementById('editAmount').value);
+    const date = new Date(document.getElementById('editDate').value).getTime();
+
+    // Pobieramy stary rekord, żeby nie stracić childId i innych pól
+    const all = await window.getAllEntries(store);
+    const oldEntry = all.find(e => e.id === id);
+
+    const updatedData = { ...oldEntry, amount: amount, date: date };
+    await window.updateEntry(store, id, updatedData);
+    
+    alert("Zaktualizowano!");
+    closeEditModal();
+    updateUI('today'); // Odśwież widok
+}
+
+async function confirmDelete() {
+    if (confirm("Czy na pewno chcesz usunąć ten rekord?")) {
+        const id = parseInt(document.getElementById('editId').value);
+        const store = document.getElementById('editStore').value;
+        await window.deleteEntry(store, id);
+        
+        alert("Usunięto!");
+        closeEditModal();
+        updateUI('today');
     }
 }
